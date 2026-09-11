@@ -24,13 +24,13 @@ Works in Claude Code and any agent that reads the
 ## Install
 
 ```bash
-npx skills add djfunboy/workflow-artifact
+npx skills add djfunboy/workflow-artifact-skill
 ```
 
 Or copy the folder by hand. For Claude Code:
 
 ```bash
-git clone https://github.com/djfunboy/workflow-artifact
+git clone https://github.com/djfunboy/workflow-artifact-skill
 cp -R workflow-artifact/skills/workflow-artifact ~/.claude/skills/
 ```
 
