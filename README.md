@@ -108,32 +108,14 @@ never scrolls sideways.
 The source is [`examples/workflow-artifact-pipeline.html`](examples/workflow-artifact-pipeline.html),
 one file, no dependencies. Open it from disk with the network off.
 
-## Pro tip: the same rules for chat replies
+## Pro tip
 
-This skill governs files. For the agent's chat replies, the same idiom works
-as a per-prompt hook. This is the exact text one of us injects on every
-prompt through a Claude Code `UserPromptSubmit` hook (any hook that prints
-to stdout will do, or paste it into your `CLAUDE.md`):
+The same idiom works for the agent's chat replies. Give it this:
 
 ```
-[format] Answer in workflows, relationship maps, decision trees, and tables — never a wall of text. Solid arrows for flow, dotted for reference, ✗ where a flow is broken. Callout boxes beside the flow, not in it. Tables carry rationale and recommendation, not just facts.
+Answer in workflows, relationship maps, decision trees, and tables — never a wall of text. Solid arrows for flow, dotted for reference, ✗ where a flow is broken. Callout boxes beside the flow, not in it. Tables carry rationale and recommendation, not just facts.
 Box every node. Boxes stay small, the diagram runs as wide and as long as it needs. Parallel things side by side, branches as side-by-side boxes, every arrow labelled.
 ```
-
-Minimal hook, `~/.claude/settings.json`:
-
-```json
-{
-  "hooks": {
-    "UserPromptSubmit": [
-      { "hooks": [ { "type": "command", "command": "cat ~/.claude/format-rule.txt" } ] }
-    ]
-  }
-}
-```
-
-The rationale is deliberately not in the text. It fires on every prompt and
-only needs the instruction; the "why" belongs in a file the agent reads once.
 
 ## Layout
 
