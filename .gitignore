@@ -1,0 +1,20 @@
+# Internal project documents — never published (public repo: not on GitHub either)
+CLAUDE.md
+AGENTS.md
+CURRENT-STATE.md
+ARCHITECTURE.md
+VALUE-PROPOSITION.md
+docs/
+tasks/
+
+# OS / editor
+.DS_Store
+*.swp
+
+# macOS / Dropbox sync artefacts
+._*
+Icon?
+.dropbox
+.dropbox.attr
+.dropbox.cache
+*.icloud

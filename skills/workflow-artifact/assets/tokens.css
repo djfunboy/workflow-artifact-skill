@@ -1,0 +1,129 @@
+/* ============================================================================
+   workflow-artifact — THE design tokens. Hard-coded on purpose.
+
+   These values ARE the spec. Do not look them up anywhere, do not read a
+   design-system document, do not open another project to check a brand, do
+   not ask which palette to use. Paste this block verbatim into every
+   document this skill produces and use the token names below.
+
+   GREEN IS THE PAGE COLOUR. AMBER IS DIAGRAM-ONLY.
+
+     Page chrome — selected tab and its underline, section numbers, links,
+     drawer border, the + expander hover and .on state, focus rings, any
+     accented heading:                                    --durable  (green)
+
+     Inside a diagram only:
+       the decision point / the active hop           --signal   (amber)
+       the broken path, ✗, failure branches               --danger   (red)
+       the path that holds, YES branches, verified        --durable  (green)
+       neutral structure                                  currentColor
+       dotted callouts, kickers, secondary text           --muted
+
+   Squint test before shipping: the colour you see most on the page is GREEN.
+   If the page reads amber or brown, the assignment is wrong — not the values.
+
+   Light-mode accents are the darker step of each ramp on purpose: the lighter
+   values fall under 3:1 contrast as stroke and small text on a #FAFBFC ground
+   and read washed out. Dark mode uses the lighter step. Both are listed — use
+   them as written.
+   ========================================================================= */
+
+:root {
+  /* ---- type. NO @font-face, NO CDN link, NO Google Fonts <link>.
+         The file must render offline; without these installed it falls back
+         to the system stack, which is correct and expected. --------------- */
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* ---- accents (light) --------------------------------------------------- */
+  --durable:      #16A34A;                    /* the path that holds — YES, works  */
+  --durable-bg:   rgba(34, 197, 94, 0.10);
+  --signal:       #B45309;                    /* the active moment — decision, hop */
+  --signal-bg:    rgba(245, 158, 11, 0.10);
+  --danger:       #DC2626;                    /* the broken path — NO, fails       */
+  --danger-bg:    rgba(239, 68, 68, 0.08);
+
+  /* ---- neutrals (light) -------------------------------------------------- */
+  --ground:       #FAFBFC;                    /* page                              */
+  --panel:        #FFFFFF;                    /* cards, drawer, table wrap         */
+  --panel-2:      #F1F5F9;                    /* recessed                          */
+  --rule:         rgba(15, 23, 42, 0.10);
+  --ink:          #1A1A1A;                    /* primary text                      */
+  --ink-soft:     #475569;                    /* secondary                         */
+  --muted:        #6B6B6B;                    /* kickers, captions, dotted asides  */
+
+  /* ---- code ---------------------------------------------------------------- */
+  --code-bg:      #0F172A;
+  --code-k:       #16A34A;
+  --code-n:       #2563EB;
+  --code-s:       #B45309;
+  --code-r:       #DC2626;
+  --code-m:       #64748B;
+
+  --shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 8px 24px -16px rgba(15, 23, 42, .25);
+}
+
+/* Dark palette — tuned as a set; use as written.
+   Guarded so an explicit light choice still wins. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --durable:    #4ADE80;
+    --durable-bg: rgba(34, 197, 94, 0.14);
+    --signal:     #FBBF24;
+    --signal-bg:  rgba(245, 158, 11, 0.14);
+    --danger:     #F87171;
+    --danger-bg:  rgba(239, 68, 68, 0.14);
+
+    --ground:     #0A1020;
+    --panel:      #111A2E;
+    --panel-2:    #0B1426;
+    --rule:       rgba(148, 163, 184, 0.14);
+    --ink:        #E2E8F0;
+    --ink-soft:   #CBD5E1;
+    --muted:      #94A3B8;
+
+    --code-bg:    #0B1426;
+    --code-k:     #4ADE80;
+    --code-n:     #60A5FA;
+    --code-s:     #FBBF24;
+    --code-r:     #F87171;
+    --code-m:     #94A3B8;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -16px rgba(0, 0, 0, .7);
+  }
+}
+
+/* Explicit dark toggle — must repeat so the toggle wins in both directions. */
+:root[data-theme="dark"] {
+  --durable:    #4ADE80;
+  --durable-bg: rgba(34, 197, 94, 0.14);
+  --signal:     #FBBF24;
+  --signal-bg:  rgba(245, 158, 11, 0.14);
+  --danger:     #F87171;
+  --danger-bg:  rgba(239, 68, 68, 0.14);
+
+  --ground:     #0A1020;
+  --panel:      #111A2E;
+  --panel-2:    #0B1426;
+  --rule:       rgba(148, 163, 184, 0.14);
+  --ink:        #E2E8F0;
+  --ink-soft:   #CBD5E1;
+  --muted:      #94A3B8;
+
+  --code-bg:    #0B1426;
+  --code-k:     #4ADE80;
+  --code-n:     #60A5FA;
+  --code-s:     #FBBF24;
+  --code-r:     #F87171;
+  --code-m:     #94A3B8;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -16px rgba(0, 0, 0, .7);
+}
+
+/* body MUST paint an explicit ground — a transparent body borrows the host's
+   theme and the document reads wrong in an embedded viewer. */
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+}

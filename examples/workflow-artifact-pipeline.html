@@ -1,0 +1,1226 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>workflow-artifact — the six-stage pipeline</title>
+<style>
+/* ============================================================================
+   workflow-artifact — THE design tokens. Hard-coded on purpose.
+
+   These values ARE the spec. Do not look them up anywhere, do not read a
+   design-system document, do not open another project to check a brand, do
+   not ask which palette to use. Paste this block verbatim into every
+   document this skill produces and use the token names below.
+
+   GREEN IS THE PAGE COLOUR. AMBER IS DIAGRAM-ONLY.
+
+     Page chrome — selected tab and its underline, section numbers, links,
+     drawer border, the + expander hover and .on state, focus rings, any
+     accented heading:                                    --durable  (green)
+
+     Inside a diagram only:
+       the decision point / the active hop           --signal   (amber)
+       the broken path, ✗, failure branches               --danger   (red)
+       the path that holds, YES branches, verified        --durable  (green)
+       neutral structure                                  currentColor
+       dotted callouts, kickers, secondary text           --muted
+
+   Squint test before shipping: the colour you see most on the page is GREEN.
+   If the page reads amber or brown, the assignment is wrong — not the values.
+
+   Light-mode accents are the darker step of each ramp on purpose: the lighter
+   values fall under 3:1 contrast as stroke and small text on a #FAFBFC ground
+   and read washed out. Dark mode uses the lighter step. Both are listed — use
+   them as written.
+   ========================================================================= */
+
+:root {
+  /* ---- type. NO @font-face, NO CDN link, NO Google Fonts <link>.
+         The file must render offline; without these installed it falls back
+         to the system stack, which is correct and expected. --------------- */
+  --sans: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, 'Segoe UI', sans-serif;
+  --mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+
+  /* ---- accents (light) --------------------------------------------------- */
+  --durable:      #16A34A;                    /* the path that holds — YES, works  */
+  --durable-bg:   rgba(34, 197, 94, 0.10);
+  --signal:       #B45309;                    /* the active moment — decision, hop */
+  --signal-bg:    rgba(245, 158, 11, 0.10);
+  --danger:       #DC2626;                    /* the broken path — NO, fails       */
+  --danger-bg:    rgba(239, 68, 68, 0.08);
+
+  /* ---- neutrals (light) -------------------------------------------------- */
+  --ground:       #FAFBFC;                    /* page                              */
+  --panel:        #FFFFFF;                    /* cards, drawer, table wrap         */
+  --panel-2:      #F1F5F9;                    /* recessed                          */
+  --rule:         rgba(15, 23, 42, 0.10);
+  --ink:          #1A1A1A;                    /* primary text                      */
+  --ink-soft:     #475569;                    /* secondary                         */
+  --muted:        #6B6B6B;                    /* kickers, captions, dotted asides  */
+
+  /* ---- code ---------------------------------------------------------------- */
+  --code-bg:      #0F172A;
+  --code-k:       #16A34A;
+  --code-n:       #2563EB;
+  --code-s:       #B45309;
+  --code-r:       #DC2626;
+  --code-m:       #64748B;
+
+  --shadow: 0 1px 2px rgba(15, 23, 42, .05), 0 8px 24px -16px rgba(15, 23, 42, .25);
+}
+
+/* Dark palette — tuned as a set; use as written.
+   Guarded so an explicit light choice still wins. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --durable:    #4ADE80;
+    --durable-bg: rgba(34, 197, 94, 0.14);
+    --signal:     #FBBF24;
+    --signal-bg:  rgba(245, 158, 11, 0.14);
+    --danger:     #F87171;
+    --danger-bg:  rgba(239, 68, 68, 0.14);
+
+    --ground:     #0A1020;
+    --panel:      #111A2E;
+    --panel-2:    #0B1426;
+    --rule:       rgba(148, 163, 184, 0.14);
+    --ink:        #E2E8F0;
+    --ink-soft:   #CBD5E1;
+    --muted:      #94A3B8;
+
+    --code-bg:    #0B1426;
+    --code-k:     #4ADE80;
+    --code-n:     #60A5FA;
+    --code-s:     #FBBF24;
+    --code-r:     #F87171;
+    --code-m:     #94A3B8;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -16px rgba(0, 0, 0, .7);
+  }
+}
+
+/* Explicit dark toggle — must repeat so the toggle wins in both directions. */
+:root[data-theme="dark"] {
+  --durable:    #4ADE80;
+  --durable-bg: rgba(34, 197, 94, 0.14);
+  --signal:     #FBBF24;
+  --signal-bg:  rgba(245, 158, 11, 0.14);
+  --danger:     #F87171;
+  --danger-bg:  rgba(239, 68, 68, 0.14);
+
+  --ground:     #0A1020;
+  --panel:      #111A2E;
+  --panel-2:    #0B1426;
+  --rule:       rgba(148, 163, 184, 0.14);
+  --ink:        #E2E8F0;
+  --ink-soft:   #CBD5E1;
+  --muted:      #94A3B8;
+
+  --code-bg:    #0B1426;
+  --code-k:     #4ADE80;
+  --code-n:     #60A5FA;
+  --code-s:     #FBBF24;
+  --code-r:     #F87171;
+  --code-m:     #94A3B8;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 8px 24px -16px rgba(0, 0, 0, .7);
+}
+
+/* body MUST paint an explicit ground — a transparent body borrows the host's
+   theme and the document reads wrong in an embedded viewer. */
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--sans);
+}
+
+/* ---- page furniture (visual-spec §7) ---------------------------------- */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-size:15px;line-height:1.55}
+.wrap{max-width:1600px;margin:0 auto;padding:40px 32px 96px}
+p,li,figcaption,.callout,.drawer .db > div{max-width:100ch}
+a{color:var(--durable)}
+header .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:0 0 10px}
+h1{font-size:30px;font-weight:800;letter-spacing:-.02em;margin:0 0 8px;line-height:1.15}
+header p{color:var(--ink-soft);margin:0}
+.tabs{display:flex;gap:2px;margin:30px 0 0;border-bottom:1px solid var(--rule);flex-wrap:wrap}
+.tab{appearance:none;background:none;border:0;cursor:pointer;font-family:var(--mono);font-size:12.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:12px 18px;border-bottom:2px solid transparent}
+.tab:hover{color:var(--ink)}
+.tab[aria-selected="true"]{color:var(--durable);border-bottom-color:var(--durable)}
+.tab:focus-visible{outline:2px solid var(--durable);outline-offset:-2px;border-radius:3px}
+[role="tabpanel"]{padding-left:84px}
+h2{display:flex;align-items:baseline;gap:20px;margin-left:-84px;font-size:21px;font-weight:750;margin-top:48px;margin-bottom:12px;line-height:1.2}
+h2 .num{flex-shrink:0;width:64px;align-self:flex-start;font-family:var(--sans);font-size:42px;font-weight:800;line-height:.86;letter-spacing:-0.03em;background:linear-gradient(135deg,#22C55E 0%,#4ADE80 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+h3{font-size:15px;font-weight:700;margin:26px 0 8px}
+figure{margin:18px 0 8px}
+figure svg{max-width:100%;height:auto;display:block;color:var(--ink)}
+figcaption{font-size:13.5px;color:var(--ink-soft);margin-top:10px}
+.tablewrap{overflow-x:auto;background:var(--panel);border:1px solid var(--rule);border-radius:8px;margin:14px 0}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;text-align:left;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--rule);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--rule);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td code,p code,li code,figcaption code{font-family:var(--mono);font-size:12px;background:var(--panel-2);padding:1px 5px;border-radius:3px}
+.callout{border:1px dotted var(--rule);border-left:3px solid var(--durable);padding:10px 14px;margin:14px 0;font-size:13.5px;background:var(--panel)}
+.callout.warn{border-left-color:var(--danger)}
+.quote{font-family:var(--mono);font-size:12.5px;line-height:1.5;background:var(--code-bg);color:#E2E8F0;padding:16px 18px;border-radius:8px;overflow-x:auto;white-space:pre;margin:14px 0}
+.quote .k{color:var(--code-k)}
+.quote .s{color:var(--code-s)}
+.quote .m{color:var(--code-m)}
+ul.inv{list-style:none;padding:0;margin:12px 0}
+ul.inv li{padding:8px 0;border-bottom:1px solid var(--rule);display:flex;gap:14px;flex-wrap:wrap}
+ul.inv li b{font-family:var(--mono);font-size:12px;letter-spacing:.04em;min-width:280px}
+.verdict{display:inline-block;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;padding:2px 8px;border-radius:4px;vertical-align:middle}
+.v-ok{background:var(--durable-bg);color:var(--durable)}
+.v-mid{background:var(--signal-bg);color:var(--signal)}
+.v-bad{background:var(--danger-bg);color:var(--danger)}
+/* expander (visual-spec §5) */
+.exp{cursor:pointer}
+.exp rect{fill:var(--panel);stroke:var(--muted);stroke-width:1;transition:fill .12s,stroke .12s}
+.exp text{font-family:var(--mono);font-size:9px;font-weight:700;fill:var(--muted);pointer-events:none}
+.exp:hover rect,.exp.on rect{fill:var(--durable);stroke:var(--durable)}
+.exp:hover text,.exp.on text{fill:#fff}
+.exp:focus-visible rect{stroke:var(--durable);stroke-width:2}
+/* drawer (visual-spec §6) */
+.drawer{border:1px solid var(--durable);border-radius:8px;background:var(--panel);padding:16px 18px 6px;margin:16px 0 8px;box-shadow:var(--shadow)}
+.drawer .dh{display:flex;gap:14px;align-items:baseline;flex-wrap:wrap;border-bottom:1px solid var(--rule);padding-bottom:10px;margin-bottom:6px}
+.drawer .dt{font-weight:800;font-size:15px}
+.drawer .dk{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.drawer .db > div{margin:10px 0 12px}
+.drawer .db h4{font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin:0 0 4px;font-weight:700}
+.drawer .db p{margin:0;font-size:13.5px}
+.drawer .db table{font-size:13px}
+.drawer .dc{appearance:none;border:0;background:none;color:var(--durable);font-family:var(--mono);font-size:11px;letter-spacing:.08em;cursor:pointer;margin-left:auto;padding:0}
+@media (max-width:700px){
+  [role="tabpanel"]{padding-left:60px}
+  h2{margin-left:-60px;gap:14px}
+  h2 .num{font-size:32px;width:46px}
+  .tab{padding:11px 12px;font-size:11.5px}
+  .wrap{padding:24px 16px 64px}
+  ul.inv li b{min-width:0}
+}
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;scroll-behavior:auto!important}
+}
+</style>
+
+<div class="wrap">
+<header>
+  <p class="kicker">workflow-artifact · skills/workflow-artifact/SKILL.md · example document</p>
+  <h1>The six-stage pipeline, drawn by running it</h1>
+  <p>This page was produced by following <code>SKILL.md</code> on itself. Every box, arrow and row cites a line of <code>SKILL.md</code> (S), <code>references/diagram-geometry.md</code> (G) or <code>references/visual-spec.md</code> (V). Click any <span class="verdict v-ok">+</span> for the mechanism behind a node.</p>
+</header>
+
+<div class="tabs" role="tablist" aria-label="Layers">
+  <button class="tab" role="tab" id="tab-a" aria-controls="panel-a" aria-selected="true" tabindex="0">The pipeline</button>
+  <button class="tab" role="tab" id="tab-b" aria-controls="panel-b" aria-selected="false" tabindex="-1">The inventory</button>
+  <button class="tab" role="tab" id="tab-c" aria-controls="panel-c" aria-selected="false" tabindex="-1">Honest state</button>
+</div>
+
+<div id="panel-a" role="tabpanel" aria-labelledby="tab-a">
+
+<h2><span class="num">1</span>Six stages, five user stops</h2>
+<figure>
+<svg viewBox="0 0 1240 930" role="img" aria-label="The pipeline is a straight spine of nine nodes, and control returns to the user four times before any HTML exists and once more before the file lands on disk.">
+<!--
+  LAYOUT GRID (D1)
+  Spine column:   x=20..320   (arrow x=170, labels anchor end at x=155)
+  Stop column:    x=440..740  (gap 120 from spine)
+  Exit / callout: x=860..1220 (gap 120 from stop column)
+  Rows (52 tall, 48 gap): request 50 | gateA 150 | gateB 250 | gather 350
+                          plan 450 | build 550 | deliver 650 | verify 750 | present 850
+  Verify: every spine arrow is a straight drop; every side arrow is straight
+          horizontal at row-centre y; the BUILD→callout run at y=576 crosses
+          an empty stop cell (BUILD has no stop box).
+-->
+<defs>
+  <marker id="d1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="currentColor"/>
+  </marker>
+  <marker id="d1g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M0,0 L10,5 L0,10 z" fill="var(--durable)"/>
+  </marker>
+</defs>
+<text x="20" y="22" font-family="var(--mono)" font-size="10" letter-spacing="1.2" fill="var(--muted)">FOUR USER STOPS BEFORE ANY HTML EXISTS · ONE MORE BEFORE IT LANDS ON DISK</text>
+
+<!-- request -->
+<rect x="20" y="50" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="170" y="71" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">USER REQUEST · "workflow html of X"</text>
+<text x="170" y="89" font-size="10.5" text-anchor="middle" fill="currentColor">trigger words: workflow · html · file · page (S 3)</text>
+<line x1="170" y1="102" x2="170" y2="150" stroke="currentColor" stroke-width="1.8" marker-end="url(#d1)"/>
+<text x="155" y="130" font-size="10.5" text-anchor="end" fill="currentColor">invokes skill</text>
+
+<!-- gate A (amber: the decision that over-triggers) -->
+<rect x="20" y="150" width="300" height="52" rx="6" fill="var(--signal-bg)" stroke="var(--signal)" stroke-width="2"/>
+<text x="170" y="171" font-size="12" font-weight="700" text-anchor="middle" fill="var(--signal)">STAGE 0 · GATE A</text>
+<text x="170" y="189" font-size="10.5" text-anchor="middle" fill="currentColor">"file, or a workflow here in the chat?" (S 54)</text>
+<g class="exp" data-k="gatea" tabindex="0" role="button" aria-label="Open detail for Gate A"><rect x="296" y="156" width="12" height="12" rx="2"/><text x="302" y="165" text-anchor="middle">+</text></g>
+<line x1="170" y1="202" x2="170" y2="250" stroke="var(--durable)" stroke-width="1.8" marker-end="url(#d1g)"/>
+<text x="155" y="230" font-size="10.5" text-anchor="end" fill="var(--durable)" font-weight="700">"file"</text>
+<line x1="320" y1="176" x2="440" y2="176" stroke="currentColor" stroke-width="1.8" marker-end="url(#d1)"/>
+<text x="380" y="164" font-size="10.5" text-anchor="middle" fill="currentColor">asks</text>
+<rect x="440" y="150" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="590" y="171" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">USER STOP 1 · ANSWERS</text>
+<text x="590" y="189" font-size="10.5" text-anchor="middle" fill="currentColor">never skipped, never guessed from wording (S 63)</text>
+<line x1="740" y1="176" x2="860" y2="176" stroke="currentColor" stroke-width="1.8" marker-end="url(#d1)"/>
+<text x="800" y="164" font-size="10.5" text-anchor="middle" fill="currentColor">"in the chat"</text>
+<rect x="860" y="150" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="1010" y="171" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">STOP · EXIT THE SKILL</text>
+<text x="1010" y="189" font-size="10.5" text-anchor="middle" fill="currentColor">draw it in the reply, text boxes and arrows (S 57)</text>
+
+<!-- gate B -->
+<rect x="20" y="250" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="170" y="271" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">STAGE 0 · GATE B</text>
+<text x="170" y="289" font-size="10.5" text-anchor="middle" fill="currentColor">"a repo, or a process you describe?" (S 67)</text>
+<g class="exp" data-k="gateb" tabindex="0" role="button" aria-label="Open detail for Gate B"><rect x="296" y="256" width="12" height="12" rx="2"/><text x="302" y="265" text-anchor="middle">+</text></g>
+<line x1="170" y1="302" x2="170" y2="350" stroke="currentColor" stroke-width="1.8" marker-end="url(#d1)"/>
+<text x="155" y="330" font-size="10.5" text-anchor="end" fill="currentColor">ask once (S 84)</text>
+<line x1="320" y1="276" x2="440" y2="276" stroke="currentColor" stroke-width="1.8" marker-end="url(#d1)"/>
+<text x="380" y="264" font-size="10.5" text-anchor="middle" fill="currentColor">asks</text>
+<rect x="440" y="250" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="590" y="271" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">USER STOP 2 · ANSWERS</text>
+<text x="590" y="289" font-size="10.5" text-anchor="middle" fill="currentColor">REPO ⇒ 1-SCAN · PROCESS ⇒ 1-INTERVIEW (S 78)</text>
+
+<!-- gather -->
+<rect x="20" y="350" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="170" y="371" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">STAGE 1 · GATHER</text>
+<text x="170" y="389" font-size="10.5" text-anchor="middle" fill="currentColor">SCAN or INTERVIEW → seven-row INVENTORY (S 118)</text>
+<g class="exp" data-k="gather" tabindex="0" role="button" aria-label="Open detail for GATHER"><rect x="296" y="356" width="12" height="12" rx="2"/><text x="302" y="365" text-anchor="middle">+</text></g>
+<line x1="170" y1="402" x2="170" y2="450" stroke="currentColor" stroke-width="1.8" marker-end="url(#d1)"/>
+<text x="155" y="430" font-size="10.5" text-anchor="end" fill="currentColor">inventory complete</text>
+<line x1="320" y1="376" x2="440" y2="376" stroke="currentColor" stroke-width="1.8" marker-end="url(#d1)"/>
+<text x="380" y="364" font-size="10.5" text-anchor="middle" fill="currentColor">prints GATHER ✓</text>
+<rect x="440" y="350" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="590" y="371" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">USER STOP 3 · CORRECTS PREMISE</text>
+<text x="590" y="389" font-size="10.5" text-anchor="middle" fill="currentColor">"before any HTML exists" (S 154–155)</text>
+
+<!-- plan -->
+<rect x="20" y="450" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="170" y="471" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">STAGE 2 · PLAN</text>
+<text x="170" y="489" font-size="10.5" text-anchor="middle" fill="currentColor">tabs · spine · numbered sections, shape each (S 183)</text>
+<g class="exp" data-k="plan" tabindex="0" role="button" aria-label="Open detail for PLAN"><rect x="296" y="456" width="12" height="12" rx="2"/><text x="302" y="465" text-anchor="middle">+</text></g>
+<line x1="170" y1="502" x2="170" y2="550" stroke="currentColor" stroke-width="1.8" marker-end="url(#d1)"/>
+<text x="155" y="530" font-size="10.5" text-anchor="end" fill="currentColor">outline accepted</text>
+<line x1="320" y1="476" x2="440" y2="476" stroke="currentColor" stroke-width="1.8" marker-end="url(#d1)"/>
+<text x="380" y="464" font-size="10.5" text-anchor="middle" fill="currentColor">stops (S 181)</text>
+<rect x="440" y="450" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="590" y="471" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">USER STOP 4 · APPROVES OUTLINE</text>
+<text x="590" y="489" font-size="10.5" text-anchor="middle" fill="currentColor">the last stop before HTML is written</text>
+
+<!-- build -->
+<rect x="20" y="550" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="170" y="571" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">STAGE 3 · BUILD</text>
+<text x="170" y="589" font-size="10.5" text-anchor="middle" fill="currentColor">one file · inline SVG · sections in outline order (S 251–267)</text>
+<g class="exp" data-k="build" tabindex="0" role="button" aria-label="Open detail for BUILD"><rect x="296" y="556" width="12" height="12" rx="2"/><text x="302" y="565" text-anchor="middle">+</text></g>
+<line x1="170" y1="602" x2="170" y2="650" stroke="currentColor" stroke-width="1.8" marker-end="url(#d1)"/>
+<text x="155" y="630" font-size="10.5" text-anchor="end" fill="currentColor">prints BUILD ✓</text>
+<line x1="320" y1="576" x2="860" y2="576" stroke="currentColor" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#d1)"/>
+<text x="590" y="564" font-size="10.5" text-anchor="middle" fill="currentColor">reads · Stage 2 took the Topology half, Stage 3 takes the rest (S 424–426)</text>
+<!-- dotted callout, beside the flow -->
+<rect x="860" y="450" width="360" height="152" rx="6" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 3"/>
+<text x="876" y="472" font-family="var(--mono)" font-size="10" letter-spacing="1.2" fill="var(--muted)">THE THREE FILES THE LOOK IS HARD-CODED IN</text>
+<text x="876" y="494" font-size="10.5" fill="currentColor">references/diagram-geometry.md — topology, then geometry</text>
+<text x="876" y="512" font-size="10.5" fill="currentColor">references/visual-spec.md — tokens, type, boxes, tabs, drawer</text>
+<text x="876" y="530" font-size="10.5" fill="currentColor">assets/tokens.css — pasted verbatim as :root (S 254–257)</text>
+<text x="876" y="556" font-size="10.5" fill="var(--muted)">Missing one → say so, carry on, report UNVERIFIED</text>
+<text x="876" y="574" font-size="10.5" fill="var(--muted)">for what it governs. Never reconstruct it (S 428–432).</text>
+<g class="exp" data-k="reads" tabindex="0" role="button" aria-label="Open detail for the reference files"><rect x="1196" y="456" width="12" height="12" rx="2"/><text x="1202" y="465" text-anchor="middle">+</text></g>
+
+<!-- deliver -->
+<rect x="20" y="650" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="170" y="671" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">STAGE 4 · DELIVER</text>
+<text x="170" y="689" font-size="10.5" text-anchor="middle" fill="currentColor">propose permanent vs one-off path · open (S 276–296)</text>
+<g class="exp" data-k="deliver" tabindex="0" role="button" aria-label="Open detail for DELIVER"><rect x="296" y="656" width="12" height="12" rx="2"/><text x="302" y="665" text-anchor="middle">+</text></g>
+<line x1="170" y1="702" x2="170" y2="750" stroke="currentColor" stroke-width="1.8" marker-end="url(#d1)"/>
+<text x="155" y="730" font-size="10.5" text-anchor="end" fill="currentColor">prints DELIVER ✓</text>
+<line x1="320" y1="676" x2="440" y2="676" stroke="currentColor" stroke-width="1.8" marker-end="url(#d1)"/>
+<text x="380" y="664" font-size="10.5" text-anchor="middle" fill="currentColor">proposes path</text>
+<rect x="440" y="650" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="590" y="671" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">USER STOP 5 · ACCEPTS IN ONE WORD</text>
+<text x="590" y="689" font-size="10.5" text-anchor="middle" fill="currentColor">"never write to one the user has not seen" (S 276)</text>
+
+<!-- verify -->
+<rect x="20" y="750" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="170" y="771" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">STAGE 5 · VERIFY &amp; FIX</text>
+<text x="170" y="789" font-size="10.5" text-anchor="middle" fill="currentColor">render · look · one surgical fix pass · re-open (S 304–391)</text>
+<g class="exp" data-k="verify" tabindex="0" role="button" aria-label="Open detail for VERIFY and FIX"><rect x="296" y="756" width="12" height="12" rx="2"/><text x="302" y="765" text-anchor="middle">+</text></g>
+<line x1="170" y1="802" x2="170" y2="850" stroke="currentColor" stroke-width="1.8" marker-end="url(#d1)"/>
+<text x="155" y="830" font-size="10.5" text-anchor="end" fill="currentColor">prints QA ✓</text>
+<line x1="320" y1="776" x2="440" y2="776" stroke="currentColor" stroke-width="1.8" marker-end="url(#d1)"/>
+<text x="380" y="764" font-size="10.5" text-anchor="middle" fill="currentColor">hands over</text>
+<rect x="440" y="750" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="590" y="771" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">"LEFT FOR YOU" · ONE LINE EACH</text>
+<text x="590" y="789" font-size="10.5" text-anchor="middle" fill="currentColor">the user's review is the real review (S 383–386)</text>
+
+<!-- present -->
+<rect x="20" y="850" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="170" y="871" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">STAGE 6 · PRESENT</text>
+<text x="170" y="889" font-size="10.5" text-anchor="middle" fill="currentColor">four-line summary block, path first (S 397–402)</text>
+<g class="exp" data-k="present" tabindex="0" role="button" aria-label="Open detail for PRESENT"><rect x="296" y="856" width="12" height="12" rx="2"/><text x="302" y="865" text-anchor="middle">+</text></g>
+<line x1="320" y1="876" x2="440" y2="876" stroke="currentColor" stroke-width="1.8" marker-end="url(#d1)"/>
+<text x="380" y="864" font-size="10.5" text-anchor="middle" fill="currentColor">reports</text>
+<rect x="440" y="850" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="590" y="871" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">USER · OPENS THE FILE</text>
+<text x="590" y="889" font-size="10.5" text-anchor="middle" fill="currentColor">"say plainly if the render could not be verified" (S 404)</text>
+</svg>
+<figcaption>The spine is linear — no stage loops back to an earlier one. What the six-stage heading hides is how often the agent hands control back: two questions at Stage 0, a printed inventory at the end of Stage 1, a written outline at Stage 2, and a proposed path at Stage 4. Only after the fifth stop does anything reach the destination the user named. Gate A is drawn in amber because it is the one decision the skill says is routinely got wrong — "workflow" over-triggers (S 52), so the skill refuses to infer the answer. The only exit off the spine is "in the chat", which leaves the skill entirely. Everything the look depends on sits in three files read at Stages 2 and 3, and a missing one degrades to a labelled UNVERIFIED, never to a guess.</figcaption>
+</figure>
+
+<h2><span class="num">2</span>Stage 0 — two questions, three outcomes</h2>
+<figure>
+<svg viewBox="0 0 1240 610" role="img" aria-label="Gate A has three outcomes drawn side by side: chat exits the skill, file continues to Gate B, and inferring the answer from the wording is the forbidden path; Gate B then chooses SCAN or INTERVIEW, which merge at Stage 2.">
+<!--
+  LAYOUT GRID (D2)
+  Row 1 gate A:   y=50..102    box x=470..770
+  Row 2 branches: y=170..222   chat 120..420 | guess 470..770 | file 820..1120
+  Row 3 gate B:   y=290..342   box x=820..1120 (directly below FILE)
+  Row 4 branches: y=410..462   scan 520..800 | interview 920..1200
+  Row 5 merge:    y=530..582   box x=520..1200 (wide so both drops are straight)
+  Routes: gate A side edges → single L-turn to chat/file; straight drop to ✗;
+          gate B side edges → single L-turn to scan/interview; straight drops to merge.
+  Verify: the y=316 run from 820 to 660 crosses no box (row 2 ends at y=222).
+-->
+<defs>
+  <marker id="d2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+  <marker id="d2g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--durable)"/></marker>
+  <marker id="d2r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--danger)"/></marker>
+</defs>
+<text x="20" y="22" font-family="var(--mono)" font-size="10" letter-spacing="1.2" fill="var(--muted)">TWO QUESTIONS ASKED ONCE DECIDE WHICH STAGE 1 RUNS — AND ONE ANSWER LEAVES THE SKILL</text>
+
+<rect x="470" y="50" width="300" height="52" rx="6" fill="var(--signal-bg)" stroke="var(--signal)" stroke-width="2"/>
+<text x="620" y="71" font-size="12" font-weight="700" text-anchor="middle" fill="var(--signal)">GATE A · FILE OR CHAT?</text>
+<text x="620" y="89" font-size="10.5" text-anchor="middle" fill="currentColor">Do you want this as a file, or in the chat? (S 54)</text>
+
+<path d="M470,76 H270 V170" fill="none" stroke="currentColor" stroke-width="1.8" marker-end="url(#d2)"/>
+<text x="370" y="64" font-size="10.5" text-anchor="middle" fill="currentColor">"in the chat"</text>
+<path d="M770,76 H970 V170" fill="none" stroke="var(--durable)" stroke-width="1.8" marker-end="url(#d2g)"/>
+<text x="870" y="64" font-size="11" font-weight="700" text-anchor="middle" fill="var(--durable)">"file"</text>
+<line x1="620" y1="102" x2="620" y2="170" stroke="var(--danger)" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#d2r)"/>
+<text x="605" y="140" font-size="10.5" text-anchor="end" fill="var(--danger)">inferred, not asked</text>
+
+<rect x="120" y="170" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="270" y="191" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">STOP · EXIT THE SKILL</text>
+<text x="270" y="209" font-size="10.5" text-anchor="middle" fill="currentColor">draw it in the reply · text boxes, arrows (S 57)</text>
+
+<rect x="470" y="170" width="300" height="52" rx="6" fill="var(--danger-bg)" stroke="var(--danger)" stroke-width="2"/>
+<text x="620" y="191" font-size="12" font-weight="700" text-anchor="middle" fill="var(--danger)">✗ GUESSED FROM THE WORDING</text>
+<text x="620" y="209" font-size="10.5" text-anchor="middle" fill="currentColor">never skip, never guess from the request (S 63)</text>
+
+<rect x="820" y="170" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="970" y="191" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">FILE</text>
+<text x="970" y="209" font-size="10.5" text-anchor="middle" fill="currentColor">continue to Gate B (S 60)</text>
+
+<line x1="970" y1="222" x2="970" y2="290" stroke="currentColor" stroke-width="1.8" marker-end="url(#d2)"/>
+<text x="955" y="260" font-size="10.5" text-anchor="end" fill="currentColor">ask once, never again this run (S 84)</text>
+
+<rect x="820" y="290" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="970" y="311" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">GATE B · REPO OR PROCESS?</text>
+<text x="970" y="329" font-size="10.5" text-anchor="middle" fill="currentColor">reading a repo, or a process you describe? (S 67)</text>
+
+<path d="M820,316 H660 V410" fill="none" stroke="currentColor" stroke-width="1.8" marker-end="url(#d2)"/>
+<text x="740" y="304" font-size="10.5" text-anchor="middle" fill="currentColor">REPO / CODEBASE</text>
+<path d="M1120,316 H1060 V410" fill="none" stroke="currentColor" stroke-width="1.8" marker-end="url(#d2)"/>
+<text x="1045" y="380" font-size="10.5" text-anchor="end" fill="currentColor">PROCESS</text>
+
+<rect x="520" y="410" width="280" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="660" y="431" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">STAGE 1 = SCAN</text>
+<text x="660" y="449" font-size="10.5" text-anchor="middle" fill="currentColor">enumerate, never sample · leaf test (S 92–106)</text>
+<g class="exp" data-k="scan" tabindex="0" role="button" aria-label="Open detail for SCAN"><rect x="776" y="416" width="12" height="12" rx="2"/><text x="782" y="425" text-anchor="middle">+</text></g>
+
+<rect x="920" y="410" width="280" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="1060" y="431" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">STAGE 1 = INTERVIEW</text>
+<text x="1060" y="449" font-size="10.5" text-anchor="middle" fill="currentColor">read first · then only the gaps (S 110–112)</text>
+<g class="exp" data-k="interview" tabindex="0" role="button" aria-label="Open detail for INTERVIEW"><rect x="1176" y="416" width="12" height="12" rx="2"/><text x="1182" y="425" text-anchor="middle">+</text></g>
+
+<line x1="660" y1="462" x2="660" y2="530" stroke="currentColor" stroke-width="1.8" marker-end="url(#d2)"/>
+<text x="645" y="500" font-size="10.5" text-anchor="end" fill="currentColor">INVENTORY</text>
+<line x1="1060" y1="462" x2="1060" y2="530" stroke="currentColor" stroke-width="1.8" marker-end="url(#d2)"/>
+<text x="1045" y="500" font-size="10.5" text-anchor="end" fill="currentColor">INVENTORY</text>
+
+<rect x="520" y="530" width="680" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="860" y="551" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">STAGE 2 · PLAN — "IDENTICAL FROM STAGE 2 ONWARD" (S 81)</text>
+<text x="860" y="569" font-size="10.5" text-anchor="middle" fill="currentColor">both paths produce the same seven-row INVENTORY; nothing downstream knows which ran (S 118)</text>
+</svg>
+<figcaption>The gates are cheap and the skill treats them as non-negotiable. Gate A's three outcomes are drawn as siblings because the skill names all three: chat exits, file continues, and inferring the answer is forbidden outright — the one path drawn dashed and red. Gate B only picks how Stage 1 gathers; from Stage 2 on the two paths are indistinguishable, which is why the merge box is one node rather than two. This run answered both gates from the brief (file · process) and, with no one to interview, took the INTERVIEW path's "read first" half and turned its "ask only the gaps" half into a list of unknowns (section 18).</figcaption>
+</figure>
+
+<h2><span class="num">3</span>The seven rows Stage 1 must fill</h2>
+<p>The INVENTORY is the only artefact Stage 1 produces, and the skill's warning is blunt: "A row you never wrote down is a row that silently vanishes from the document" (S 120–121). The third column is the part the skill does not say — where each row ended up on this page.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Row</th><th>Captures (S 125–131)</th><th>Question it answers</th><th>Where it lands here — and why that placement</th></tr></thead>
+<tbody>
+<tr><td><b>STEPS</b></td><td>every discrete step, decomposed to leaf</td><td>what actually happens</td><td>the diagrams in this tab, one node per leaf. Recommendation: keep the leaf test literal — a box still holding an "and" is two boxes</td></tr>
+<tr><td><b>TRIGGERS</b></td><td>cron · hook · webhook · user action · file watch · event · manual</td><td>what makes it start</td><td>section 11. For a skill the triggers are phrases and user answers, not cron — the row still applies, so it is filled rather than waived</td></tr>
+<tr><td><b>DEPENDENCIES</b></td><td>env var · secret · service · binary · file · permission · network</td><td>what it needs to work</td><td>section 12, with the "if missing" column — the skill's own fallback rule (S 428–432) is the rationale for that column</td></tr>
+<tr><td><b>BRANCHES</b></td><td>every conditional, <b>both</b> sides, each labelled</td><td>where it can go two ways</td><td>sections 2, 7 and 15. Both sides drawn even where one side is a single word ("file")</td></tr>
+<tr><td><b>FAILURE PATHS</b></td><td>what happens when each step fails, and then what</td><td>what breaks</td><td>the ✗ nodes in sections 2 and 7, and section 17. Assumed nothing: each is quoted from a line</td></tr>
+<tr><td><b>HANDOFFS</b></td><td>where control crosses process · machine · service · human</td><td>where it leaves one system</td><td>section 13 — the user stops in section 1 are the human handoffs; browser, Chrome and disk are the machine ones</td></tr>
+<tr><td><b>STATE</b></td><td>what is written, read, persisted, and where</td><td>what survives the run</td><td>section 14. Recommendation: the skill should say where the HTML first lands, because today Stage 3 writes and Stage 4 names the path (unknown U-2)</td></tr>
+</tbody></table></div>
+<p class="callout">A row that genuinely does not apply "is said so, not padded with filler" (S 133). Every row applied to this subject, so none is waived.</p>
+
+<h2><span class="num">4</span>Stage 1 — the loop that makes depth</h2>
+<figure>
+<svg viewBox="0 0 1240 490" role="img" aria-label="A step only reaches the inventory after it passes the leaf test; a step that still contains an and or a then is split and re-tested, and the floor rules gate the row before it is written.">
+<!--
+  LAYOUT GRID (D3)
+  Spine row:   y=50..102  (arrow y=76)   source 20..280 | step 400..660 | leaf test 780..1040
+  Gap:         y=102..170
+  Row 2:       y=170..222  callout 20..340 (to y=342) | split 400..660 | leaf 780..1040
+  Row 3:       y=290..342  inventory row 780..1040
+  Row 4:       y=410..462  print GATHER 780..1040
+  Routes: NO  = M850,102 V150 H600 V170 (two turns, outside the YES corridor at x=910)
+          return = M460,170 V102 straight up into NAME A STEP
+          YES = straight drop at x=910 · callout→row = dashed at y=316
+  Verify: y=150 run spans x=600..850, row 2 starts at y=170 — clear by 20px.
+-->
+<defs>
+  <marker id="d3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+  <marker id="d3g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--durable)"/></marker>
+  <marker id="d3r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--danger)"/></marker>
+</defs>
+<text x="20" y="22" font-family="var(--mono)" font-size="10" letter-spacing="1.2" fill="var(--muted)">A STEP REACHES THE INVENTORY ONLY AFTER IT HOLDS ONE MECHANISM — DEPTH IS THIS LOOP, NOT WORDS</text>
+
+<rect x="20" y="50" width="260" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="150" y="71" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">OPEN THE SOURCE</text>
+<text x="150" y="89" font-size="10.5" text-anchor="middle" fill="currentColor">every entry point, every flow (S 92–94)</text>
+<line x1="280" y1="76" x2="400" y2="76" stroke="currentColor" stroke-width="1.8" marker-end="url(#d3)"/>
+<text x="340" y="64" font-size="10.5" text-anchor="middle" fill="currentColor">real names (S 95)</text>
+
+<rect x="400" y="50" width="260" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="530" y="71" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">NAME A STEP</text>
+<text x="530" y="89" font-size="10.5" text-anchor="middle" fill="currentColor">one discrete thing that happens (S 125)</text>
+<line x1="660" y1="76" x2="780" y2="76" stroke="currentColor" stroke-width="1.8" marker-end="url(#d3)"/>
+<text x="720" y="64" font-size="10.5" text-anchor="middle" fill="currentColor">test it</text>
+
+<rect x="780" y="50" width="260" height="52" rx="6" fill="var(--signal-bg)" stroke="var(--signal)" stroke-width="2"/>
+<text x="910" y="71" font-size="12" font-weight="700" text-anchor="middle" fill="var(--signal)">THE LEAF TEST</text>
+<text x="910" y="89" font-size="10.5" text-anchor="middle" fill="currentColor">names ONE mechanism you could point at? (S 101)</text>
+<g class="exp" data-k="leaf" tabindex="0" role="button" aria-label="Open detail for the leaf test"><rect x="1016" y="56" width="12" height="12" rx="2"/><text x="1022" y="65" text-anchor="middle">+</text></g>
+
+<line x1="910" y1="102" x2="910" y2="170" stroke="var(--durable)" stroke-width="1.8" marker-end="url(#d3g)"/>
+<text x="925" y="140" font-size="11" font-weight="700" fill="var(--durable)">YES · one mechanism</text>
+<path d="M850,102 V150 H600 V170" fill="none" stroke="var(--danger)" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#d3r)"/>
+<text x="725" y="138" font-size="10.5" text-anchor="middle" fill="var(--danger)">NO · still an "and" or a "then" (S 105)</text>
+
+<rect x="400" y="170" width="260" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="530" y="191" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">SPLIT IT AGAIN</text>
+<text x="530" y="209" font-size="10.5" text-anchor="middle" fill="currentColor">each half becomes its own step (S 105)</text>
+<line x1="460" y1="170" x2="460" y2="102" stroke="currentColor" stroke-width="1.8" marker-end="url(#d3)"/>
+<text x="445" y="140" font-size="10.5" text-anchor="end" fill="currentColor">re-test each half</text>
+
+<rect x="780" y="170" width="260" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="910" y="191" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">LEAF · CITE FILE AND LINE</text>
+<text x="910" y="209" font-size="10.5" text-anchor="middle" fill="currentColor">"probably calls" → the line that calls it (S 145)</text>
+<line x1="910" y1="222" x2="910" y2="290" stroke="currentColor" stroke-width="1.8" marker-end="url(#d3)"/>
+<text x="895" y="260" font-size="10.5" text-anchor="end" fill="currentColor">written as you go (S 120)</text>
+
+<rect x="780" y="290" width="260" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="910" y="311" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">INVENTORY ROW WRITTEN</text>
+<text x="910" y="329" font-size="10.5" text-anchor="middle" fill="currentColor">steps · triggers · deps · branches · failures · handoffs · state</text>
+<line x1="910" y1="342" x2="910" y2="410" stroke="currentColor" stroke-width="1.8" marker-end="url(#d3)"/>
+<text x="895" y="380" font-size="10.5" text-anchor="end" fill="currentColor">all flows done</text>
+
+<rect x="780" y="410" width="260" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="910" y="431" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">PRINT "GATHER ✓" AND WAIT</text>
+<text x="910" y="449" font-size="10.5" text-anchor="middle" fill="currentColor">the user corrects a wrong premise here (S 154)</text>
+<g class="exp" data-k="gatherline" tabindex="0" role="button" aria-label="Open detail for the GATHER line"><rect x="1016" y="416" width="12" height="12" rx="2"/><text x="1022" y="425" text-anchor="middle">+</text></g>
+
+<!-- callout: the floor -->
+<rect x="20" y="170" width="320" height="172" rx="6" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 3"/>
+<text x="36" y="192" font-family="var(--mono)" font-size="10" letter-spacing="1.2" fill="var(--muted)">THE FLOOR — CANNOT BE MET BY PADDING</text>
+<text x="36" y="214" font-size="10.5" fill="currentColor">every flow traced, not one (S 140)</text>
+<text x="36" y="232" font-size="10.5" fill="currentColor">both sides of every branch (S 141)</text>
+<text x="36" y="250" font-size="10.5" fill="currentColor">every failure path investigated (S 143)</text>
+<text x="36" y="268" font-size="10.5" fill="currentColor">a + expander on every full node (S 144)</text>
+<text x="36" y="286" font-size="10.5" fill="currentColor">cite it — never from a name or a convention (S 145)</text>
+<text x="36" y="304" font-size="10.5" fill="currentColor">unknowns listed · contradictions surfaced (S 149–152)</text>
+<text x="36" y="328" font-size="10.5" fill="var(--muted)">"usually the most valuable finding on the page" (S 152)</text>
+<g class="exp" data-k="floor" tabindex="0" role="button" aria-label="Open detail for the floor rules"><rect x="316" y="176" width="12" height="12" rx="2"/><text x="322" y="185" text-anchor="middle">+</text></g>
+<line x1="340" y1="316" x2="780" y2="316" stroke="currentColor" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#d3)"/>
+<text x="560" y="304" font-size="10.5" text-anchor="middle" fill="currentColor">gates every row (S 135–137)</text>
+</svg>
+<figcaption>Depth in this skill is "resolution, not volume" (S 39–44) and this loop is where the resolution comes from. A step goes round until it names one mechanism — one function, one hook, one config key (S 101–103) — and only then is it cited and written into the inventory. The dashed red NO path is the interesting one: it is not a failure of the process, it is the process. The dotted floor beside the flow is what stops the inventory being padded: every flow, both sides, every failure, every full node given a <code>+</code>, every claim traced to a line. On this subject the "source" was SKILL.md itself, which is why every node on this page carries an S, G or V line reference.</figcaption>
+</figure>
+
+<h2><span class="num">5</span>Stage 2 — the decisions in the outline, in order</h2>
+<p>Stage 2 is short in the skill (S 165–216) but it is where four decisions get made before any HTML exists. Walking them in the order the agent meets them:</p>
+<h3>Decision 1 — how big is the page?</h3>
+<p>"Size the document to the subject" (S 169). The branch is sized-to-subject versus padded-to-look-substantial, and the skill names the second as a failure equal to leaving steps out (S 170–172). What enforces it: nothing mechanical — "there are no size gates" (S 172). For this subject the subject is one pipeline with three natural layers (how it runs, what it consumes, where it fails), so: three tabs, unequal.</p>
+<h3>Decision 2 — does resolution scale down with size?</h3>
+<p>No, explicitly (S 174–176). A small document still traces to leaf, still names every trigger, still draws both sides of every branch. What enforces it: the floor from section 4. So even a small page gets the full inventory tab.</p>
+<h3>Decision 3 — are the tabs symmetric?</h3>
+<p>"Do not force symmetry across tabs" (S 178–179). The pipeline tab carries the weight here; the inventory tab is tables; the honest-state tab is short. What enforces it: the failure-mode box "SYMMETRY FOR ITS OWN SAKE" (S 236–240).</p>
+<h3>Decision 4 — what shape is each section?</h3>
+<p>Eight shapes are listed (S 195–204), and the rule is "no shape three times consecutively" (S 193). That is what put a table at section 3 between two diagrams, and a walk-through here between a diagram and a list. Each tab also needs at least one honest-state section (S 206–210) — sections 10, 17 and the verdicts in 14.</p>
+<p>Then the agent "produces a visible outline and stops for the user" (S 181). With nobody at the keyboard during the build, the stop became a printed outline and the build continued — a departure recorded in section 10.</p>
+
+<h2><span class="num">6</span>Stage 3 — the constraints BUILD works under</h2>
+<p>Every item below is a rule the file on your screen had to satisfy, with where it is met.</p>
+<ul class="inv">
+<li><b>one self-contained file (S 251)</b><span>no CDN, no stylesheet link, no library. This page has zero external requests — double-click it with the network off.</span></li>
+<li><b>hand-authored inline SVG (S 253)</b><span>no Mermaid, no D3. Every diagram here is literal <code>&lt;rect&gt;</code> and <code>&lt;path&gt;</code> with a grid comment above it (G 126–140).</span></li>
+<li><b>the look is hard-coded (S 254–257)</b><span><code>tokens.css</code> is pasted verbatim as the <code>:root</code> block at the top of this file's <code>&lt;style&gt;</code>; nothing was looked up.</span></li>
+<li><b>green is the page colour (S 258–261)</b><span>tabs, section numerals, links, the drawer border and the <code>+</code> hover are all <code>--durable</code>. Amber appears only inside SVGs, once per diagram, on the decision point.</span></li>
+<li><b>drawer opens in its own section (S 262)</b><span>one drawer element, moved before the next <code>&lt;h2&gt;</code> on every click (V 297–307).</span></li>
+<li><b>light and dark, responsive, reduced motion (S 263)</b><span>dark under both the media guard and <code>[data-theme="dark"]</code>; tables scroll inside <code>.tablewrap</code>; transitions and smooth scroll are off under <code>prefers-reduced-motion</code>.</span></li>
+<li><b>sections written in outline order (S 265–267)</b><span>this file was appended section by section — diagram, then its caption, then the next — not diagrams first with prose backfilled.</span></li>
+<li><b>doctype · charset · viewport (S 311–317)</b><span>the three boilerplate lines are the first three lines of the file. Note: the skill states this rule under Stage 5, after BUILD is over — see section 18.</span></li>
+</ul>
+
+<h2><span class="num">7</span>Stages 4 and 5 — deliver, render, fix once</h2>
+<figure>
+<svg viewBox="0 0 1240 630" role="img" aria-label="After the path is proposed and the file opened, the agent picks one of three renderers; the third, having none, must be reported as UNVERIFIED, and the other two lead to one surgical fix pass, one re-render, and a stop.">
+<!--
+  LAYOUT GRID (D4)
+  Spine row:  y=50..102 (arrow y=76)  propose 20..240 | open 340..560 | renderer 660..880 (amber)
+  Gap:        y=102..190  branch horizontals at y=136
+  Row 2:      y=190..242  callout 20..300 (to 300) | mcp 340..560 | headless 660..880 | neither 980..1200
+  Row 3:      y=310..362  look 310..910 (wide: both drops straight) | report 980..1200
+  Row 4:      y=430..482  fix 500..720 | rerender 820..1040
+  Row 5:      y=550..602  qa 820..1040
+  Routes: mcp = M680,102 V136 H450 V190 · headless = straight x=770 · neither = M860,102 V136 H1090 V190
+  Verify: y=136 runs span 450..680 and 860..1090; nothing sits between y=102 and y=190.
+-->
+<defs>
+  <marker id="d4" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+  <marker id="d4r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--danger)"/></marker>
+</defs>
+<text x="20" y="22" font-family="var(--mono)" font-size="10" letter-spacing="1.2" fill="var(--muted)">THREE WAYS TO RENDER, ONE OF WHICH MUST BE CALLED UNVERIFIED — THEN EXACTLY ONE FIX PASS</text>
+
+<rect x="20" y="50" width="220" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="130" y="71" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">PROPOSE THE PATH</text>
+<text x="130" y="89" font-size="10.5" text-anchor="middle" fill="currentColor">permanent vs one-off (S 279–280)</text>
+<line x1="240" y1="76" x2="340" y2="76" stroke="currentColor" stroke-width="1.8" marker-end="url(#d4)"/>
+<text x="290" y="64" font-size="10.5" text-anchor="middle" fill="currentColor">user accepts</text>
+<line x1="130" y1="102" x2="130" y2="190" stroke="currentColor" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#d4)"/>
+<text x="115" y="150" font-size="10.5" text-anchor="end" fill="currentColor">derived from</text>
+<rect x="20" y="190" width="280" height="110" rx="6" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 3"/>
+<text x="36" y="212" font-family="var(--mono)" font-size="10" letter-spacing="1.2" fill="var(--muted)">WHERE YOU WERE JUST READING</text>
+<text x="36" y="234" font-size="10.5" fill="currentColor">permanent → the subject's own docs folder</text>
+<text x="36" y="252" font-size="10.5" fill="currentColor">one-off → scratch, out of the repo (S 279–285)</text>
+<text x="36" y="276" font-size="10.5" fill="var(--muted)">a one-off left in a repo goes stale; a permanent</text>
+<text x="36" y="292" font-size="10.5" fill="var(--muted)">doc left in temp gets swept (S 284–285)</text>
+
+<rect x="340" y="50" width="220" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="450" y="71" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">OPEN IN THE BROWSER</text>
+<text x="450" y="89" font-size="10.5" text-anchor="middle" fill="currentColor">"mandatory, not optional" (S 287)</text>
+<g class="exp" data-k="open" tabindex="0" role="button" aria-label="Open detail for opening in the browser"><rect x="536" y="56" width="12" height="12" rx="2"/><text x="542" y="65" text-anchor="middle">+</text></g>
+<line x1="560" y1="76" x2="660" y2="76" stroke="currentColor" stroke-width="1.8" marker-end="url(#d4)"/>
+<text x="610" y="64" font-size="10.5" text-anchor="middle" fill="currentColor">DELIVER ✓</text>
+
+<rect x="660" y="50" width="220" height="52" rx="6" fill="var(--signal-bg)" stroke="var(--signal)" stroke-width="2"/>
+<text x="770" y="71" font-size="12" font-weight="700" text-anchor="middle" fill="var(--signal)">WHICH RENDERER?</text>
+<text x="770" y="89" font-size="10.5" text-anchor="middle" fill="currentColor">in order of preference (S 324)</text>
+<g class="exp" data-k="renderer" tabindex="0" role="button" aria-label="Open detail for the renderer choice"><rect x="856" y="56" width="12" height="12" rx="2"/><text x="862" y="65" text-anchor="middle">+</text></g>
+
+<path d="M680,102 V136 H450 V190" fill="none" stroke="currentColor" stroke-width="1.8" marker-end="url(#d4)"/>
+<text x="565" y="124" font-size="10.5" text-anchor="middle" fill="currentColor">1st · MCP present</text>
+<line x1="770" y1="102" x2="770" y2="190" stroke="currentColor" stroke-width="1.8" marker-end="url(#d4)"/>
+<text x="755" y="170" font-size="10.5" text-anchor="end" fill="currentColor">2nd · shell</text>
+<path d="M860,102 V136 H1090 V190" fill="none" stroke="var(--danger)" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#d4r)"/>
+<text x="975" y="124" font-size="10.5" text-anchor="middle" fill="var(--danger)">3rd · neither</text>
+
+<rect x="340" y="190" width="220" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="450" y="211" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">BROWSER DEVTOOLS MCP</text>
+<text x="450" y="229" font-size="10.5" text-anchor="middle" fill="currentColor">file:// · captures · console (S 326)</text>
+<rect x="660" y="190" width="220" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="770" y="211" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">HEADLESS CHROME · SHELL</text>
+<text x="770" y="229" font-size="10.5" text-anchor="middle" fill="currentColor">--screenshot · --dump-dom (S 335)</text>
+<rect x="980" y="190" width="220" height="52" rx="6" fill="var(--danger-bg)" stroke="var(--danger)" stroke-width="2"/>
+<text x="1090" y="211" font-size="12" font-weight="700" text-anchor="middle" fill="var(--danger)">✗ NEITHER AVAILABLE</text>
+<text x="1090" y="229" font-size="10.5" text-anchor="middle" fill="currentColor">UNVERIFIED — not rendered (S 344)</text>
+
+<line x1="450" y1="242" x2="450" y2="310" stroke="currentColor" stroke-width="1.8" marker-end="url(#d4)"/>
+<text x="435" y="280" font-size="10.5" text-anchor="end" fill="currentColor">screens + console</text>
+<line x1="770" y1="242" x2="770" y2="310" stroke="currentColor" stroke-width="1.8" marker-end="url(#d4)"/>
+<text x="755" y="280" font-size="10.5" text-anchor="end" fill="currentColor">screens + width probe (S 354)</text>
+<line x1="1090" y1="242" x2="1090" y2="310" stroke="var(--danger)" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#d4r)"/>
+<text x="1075" y="280" font-size="10.5" text-anchor="end" fill="var(--danger)">say it exactly</text>
+
+<rect x="310" y="310" width="600" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="610" y="331" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">LOOK — THE DEFECT TABLE, THEN THE WIRING CHECKS</text>
+<text x="610" y="349" font-size="10.5" text-anchor="middle" fill="currentColor">seven defects markup review cannot catch (S 363–371) · data-k, aria-controls, one panel visible (S 373–376)</text>
+<g class="exp" data-k="look" tabindex="0" role="button" aria-label="Open detail for the look step"><rect x="886" y="316" width="12" height="12" rx="2"/><text x="892" y="325" text-anchor="middle">+</text></g>
+<rect x="980" y="310" width="220" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="1090" y="331" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">NOT DONE — SAY SO</text>
+<text x="1090" y="349" font-size="10.5" text-anchor="middle" fill="currentColor">never "should render correctly" (S 345)</text>
+
+<line x1="610" y1="362" x2="610" y2="430" stroke="currentColor" stroke-width="1.8" marker-end="url(#d4)"/>
+<text x="595" y="400" font-size="10.5" text-anchor="end" fill="currentColor">findings</text>
+<rect x="500" y="430" width="220" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="610" y="451" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">ONE SURGICAL FIX PASS</text>
+<text x="610" y="469" font-size="10.5" text-anchor="middle" fill="currentColor">one edit per finding (S 380)</text>
+<g class="exp" data-k="fix" tabindex="0" role="button" aria-label="Open detail for the fix pass"><rect x="696" y="436" width="12" height="12" rx="2"/><text x="702" y="445" text-anchor="middle">+</text></g>
+<line x1="720" y1="456" x2="820" y2="456" stroke="currentColor" stroke-width="1.8" marker-end="url(#d4)"/>
+<text x="770" y="444" font-size="10.5" text-anchor="middle" fill="currentColor">confirm</text>
+<rect x="820" y="430" width="220" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="930" y="451" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">RE-RENDER ONCE · RE-OPEN · STOP</text>
+<text x="930" y="469" font-size="10.5" text-anchor="middle" fill="currentColor">no second review round (S 382)</text>
+<line x1="930" y1="482" x2="930" y2="550" stroke="currentColor" stroke-width="1.8" marker-end="url(#d4)"/>
+<text x="915" y="520" font-size="10.5" text-anchor="end" fill="currentColor">anything still open</text>
+<rect x="820" y="550" width="220" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="930" y="571" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">PRINT "QA ✓" · LEFT FOR YOU</text>
+<text x="930" y="589" font-size="10.5" text-anchor="middle" fill="currentColor">one line each, or "nothing" (S 389–391)</text>
+</svg>
+<figcaption>Two things in this diagram are easy to get wrong from the prose. First, "open in the browser" is a spine node, not a courtesy: the skill calls it mandatory, before anything is reported, and again after the fix pass (S 287–296). Second, the renderer choice is a ranked fallback, and the third rung is a sentence the agent must say verbatim — "UNVERIFIED — the document was not rendered" — rather than a softer claim (S 344–346). The fix pass is deliberately not a loop: one pass, one re-render, stop, because "the user's review is the real review" (S 383). This run took the second rung: headless Chrome at 1440 wide and full height, light and forced-dark, plus the width probe read back through <code>--dump-dom</code>.</figcaption>
+</figure>
+
+<h2><span class="num">8</span>What a screenshot catches that markup review cannot</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Defect (S 365–371)</th><th>Why it slips through</th><th>How this document checked it — and the honest result</th></tr></thead>
+<tbody>
+<tr><td>text past a box edge, or sitting on a line</td><td>the coordinates looked plausible</td><td>text-width arithmetic before drawing (G 202–214), then the light screenshot. Widest cell: the D4 LOOK detail line, 103 chars × 10.5 × 0.5 = 541px in a 540-wide box minus padding — over. Fixed in the pass by widening the box to 600.</td></tr>
+<tr><td>two labels touching, arrowhead through text</td><td>ditto</td><td>every vertical label sits left of its line (G 187) except one YES label moved to the right of its line to clear the NO run beside it (D3) — a deliberate, noted deviation.</td></tr>
+<tr><td>a line stopping short, or pointing at nothing</td><td>the path data parsed</td><td>each path's endpoint equals a box edge in the grid comment; checked by reading the comment against the path, then the screenshot.</td></tr>
+<tr><td>something invisible in dark mode</td><td>the token was only defined for light</td><td>rendered with <code>--force-dark-mode</code>; the <code>data-theme="dark"</code> guard checked separately in <code>--dump-dom</code> (S 338–339).</td></tr>
+<tr><td>an empty tab panel or a drawer with nothing in it</td><td>the markup was there</td><td>headless cannot click (S 340–341) — tabs B and C, and one open drawer, were rendered by injecting clicks into a scratch copy and capturing each first viewport.</td></tr>
+<tr><td>the page scrolling sideways</td><td>fits at your width, not the reader's</td><td><code>scrollWidth</code> vs <code>clientWidth</code> probe on load (S 354–357). Not judged from the 390px capture — the skill says that capture lies (S 348–352).</td></tr>
+<tr><td>console errors</td><td>a silent throw, page still looks right</td><td><code>--enable-logging=stderr</code> plus a <code>window.onerror</code> probe in the dump. Recommendation: the skill should name a concrete command here; it currently names the flag only in the job brief, not in SKILL.md.</td></tr>
+</tbody></table></div>
+
+<h2><span class="num">9</span>The rule the whole skill turns on, verbatim</h2>
+<p>Section 1 of this page exists because of the line below. It is the first thing in <code>SKILL.md</code> after the front-matter, and every later rule — the ~120-word caption target, the expander, the "no wall of text" defect — derives from it.</p>
+<pre class="quote"><span class="m">SKILL.md, lines 10–11 and 13–17</span>
+
+<span class="k">**The deliverable is the DIAGRAMS AND TABLES. Prose is the caption.**</span> A wall of
+text is a failure of this skill, no matter how accurate it is.
+
+The value the document creates is <span class="s">**revelation**</span>: the reader looks at it and
+says "wait — I thought that step came *after* this one" or "I didn't realize
+there were eight files involved." Everything below serves that moment. A
+document that only confirms what the reader already believed was not worth
+building.</pre>
+<p>The test it sets is checkable: does the page contain at least one thing the reader did not already believe? For this subject, the candidates are section 1 (five user stops, four before HTML exists) and section 18 (the boilerplate rule lives in the wrong stage).</p>
+
+<h2><span class="num">10</span>Honest state — where this run departed from the skill</h2>
+<p>The skill was followed as written except where the job brief overrode it. Each departure, with its verdict:</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Skill says</th><th>This run did</th><th>Verdict</th><th>Why</th></tr></thead>
+<tbody>
+<tr><td>Gate A and Gate B: ask, never guess (S 63, 84)</td><td>took both answers from the brief without asking</td><td><span class="verdict v-ok">working</span></td><td>the brief pre-answered them in the user's voice; nothing was inferred from wording</td></tr>
+<tr><td>"stop for the user" after PLAN (S 181)</td><td>printed the outline and continued</td><td><span class="verdict v-mid">partly</span></td><td>no user was present; the outline was printed in the build transcript for after-the-fact review</td></tr>
+<tr><td>open in the browser, mandatory, twice (S 287–296)</td><td>opened after the build by the reviewing agent, not by the builder</td><td><span class="verdict v-mid">partly</span></td><td>the build ran headless with no screen; the file went into a browser only once a person was there to look at it</td></tr>
+<tr><td>propose the path, user accepts (S 276)</td><td>path was pre-answered</td><td><span class="verdict v-ok">working</span></td><td>the user saw the path before it was written to — the rule's intent held</td></tr>
+<tr><td>QA line ends "rendered light + dark + mobile" (S 389)</td><td>light + dark rendered; "mobile" is the width probe, not a capture</td><td><span class="verdict v-mid">partly</span></td><td>the skill itself says a 390px capture is misleading (S 348); the line's wording predates that rule</td></tr>
+</tbody></table></div>
+</div>
+
+<div id="panel-b" role="tabpanel" aria-labelledby="tab-b" hidden>
+
+<h2><span class="num">11</span>Triggers — what makes each stage start</h2>
+<p>A skill has no cron. Its triggers are phrases, answers and the completion of the previous stage — the row still applies, so it is filled.</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Trigger</th><th>Kind</th><th>Starts</th><th>Cited</th><th>So what</th></tr></thead>
+<tbody>
+<tr><td>a request containing workflow · html · file · page · "map out" · "document how"</td><td>user action</td><td>the skill itself</td><td>S 3</td><td>over-triggers on purpose; Gate A is the correction, so never skip it</td></tr>
+<tr><td>ambiguity about file-vs-chat</td><td>user action</td><td>Stage 0, Gate A question</td><td>S 3, S 52–63</td><td>"ambiguity is a reason to invoke and ask, not a reason to skip"</td></tr>
+<tr><td>answer "file"</td><td>user answer</td><td>Gate B</td><td>S 60</td><td>the only answer that continues</td></tr>
+<tr><td>answer "repo" / "process"</td><td>user answer</td><td>1-SCAN / 1-INTERVIEW</td><td>S 78</td><td>decides only how Stage 1 gathers</td></tr>
+<tr><td>the previous stage's ✓ line printed</td><td>event</td><td>the next stage</td><td>S 158, 269, 299, 389</td><td>the summary lines are the stage boundaries — a missing line is a skipped handoff</td></tr>
+<tr><td>a click or Enter on a <code>+</code></td><td>user action (in the document)</td><td>the drawer</td><td>V 355–358</td><td>the only runtime behaviour the document has</td></tr>
+</tbody></table></div>
+
+<h2><span class="num">12</span>Dependencies — what a run needs, and what happens without it</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Dependency</th><th>Kind</th><th>Read at</th><th>Governs</th><th>If missing</th></tr></thead>
+<tbody>
+<tr><td><code>references/diagram-geometry.md</code></td><td>file</td><td>Stage 2 (Topology half) and Stage 3 (Geometry half)</td><td>node placement, routing, text arithmetic</td><td>say so, carry on, report UNVERIFIED for layout (S 428–432)</td></tr>
+<tr><td><code>references/visual-spec.md</code></td><td>file</td><td>Stage 3</td><td>type, boxes, tabs, expander, drawer</td><td>same rule; never reconstruct from memory</td></tr>
+<tr><td><code>assets/tokens.css</code></td><td>file</td><td>Stage 3</td><td>every colour — pasted verbatim</td><td>same rule; the values "are literal and cannot be inferred" (S 432)</td></tr>
+<tr><td>Browser DevTools MCP</td><td>service</td><td>Stage 5</td><td>first-choice render + console</td><td>fall to headless Chrome (S 332)</td></tr>
+<tr><td>Chrome / chromium binary</td><td>binary</td><td>Stage 5</td><td>second-choice render</td><td>say "UNVERIFIED — the document was not rendered" (S 344)</td></tr>
+<tr><td><code>open</code> / <code>xdg-open</code> / <code>start</code></td><td>binary</td><td>Stage 4 and after the fix pass</td><td>putting the file on screen</td><td>not addressed by the skill — unknown U-5</td></tr>
+<tr><td>a writable destination the user has seen</td><td>permission</td><td>Stage 4</td><td>where the file lands</td><td>"never write to one the user has not seen" (S 276)</td></tr>
+<tr><td>network</td><td>network</td><td>never</td><td>—</td><td>the file must render with the network off (S 252); a Google Fonts link is a defect (V 44–45)</td></tr>
+<tr><td>a user at the keyboard</td><td>human</td><td>Stages 0, 1, 2, 4, 5</td><td>five stops</td><td>not addressed — this run substituted the brief (section 10)</td></tr>
+</tbody></table></div>
+
+<h2><span class="num">13</span>Handoffs — where control leaves the agent</h2>
+<figure>
+<svg viewBox="0 0 1240 420" role="img" aria-label="The agent hands control to four other parties: the user five times, the disk once, the browser twice and the renderer once, and only the disk hand-off produces something that persists.">
+<!--
+  LAYOUT GRID (D5)
+  Core:     agent 470..770, y=170..222 (centre 620,196)
+  Above:    user 470..770, y=50..102        (human)
+  Left:     disk 20..300, y=170..222        (file system)
+  Right:    browser 940..1220, y=170..222   (open)
+  Below:    renderer 470..770, y=310..362   (headless chrome / MCP)
+  Routes: agent→user  up at x=600 (label right) · user→agent down at x=640 (label left? no — right of x=640 would collide; label left of 640 sits between the two lines: use x=655 anchor start)
+          agent→disk left at y=196 · agent→browser right at y=196 · agent→renderer down at x=600, renderer→agent up at x=640
+  Verify: the paired verticals are 40px apart; labels for the up line sit left of x=585, for the down line right of x=655.
+-->
+<defs>
+  <marker id="d5" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+  <marker id="d5g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--durable)"/></marker>
+</defs>
+<text x="20" y="22" font-family="var(--mono)" font-size="10" letter-spacing="1.2" fill="var(--muted)">FOUR PARTIES TAKE CONTROL FROM THE AGENT — ONLY THE DISK HAND-OFF LEAVES ANYTHING BEHIND</text>
+
+<rect x="470" y="50" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="620" y="71" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">THE USER · HUMAN</text>
+<text x="620" y="89" font-size="10.5" text-anchor="middle" fill="currentColor">answers gates · corrects premise · approves outline · accepts path</text>
+<line x1="600" y1="170" x2="600" y2="102" stroke="currentColor" stroke-width="1.8" marker-end="url(#d5)"/>
+<text x="585" y="140" font-size="10.5" text-anchor="end" fill="currentColor">asks / prints ✓ lines ×5</text>
+<line x1="640" y1="102" x2="640" y2="170" stroke="currentColor" stroke-width="1.8" marker-end="url(#d5)"/>
+<text x="655" y="140" font-size="10.5" fill="currentColor">answers, in one word (S 277)</text>
+
+<rect x="20" y="170" width="280" height="52" rx="6" fill="var(--durable-bg)" stroke="var(--durable)" stroke-width="2"/>
+<text x="160" y="191" font-size="12" font-weight="700" text-anchor="middle" fill="var(--durable)">THE DISK · PERSISTS</text>
+<text x="160" y="209" font-size="10.5" text-anchor="middle" fill="currentColor">one .html at the accepted path (S 274–285)</text>
+<line x1="470" y1="196" x2="300" y2="196" stroke="var(--durable)" stroke-width="1.8" marker-end="url(#d5g)"/>
+<text x="385" y="184" font-size="10.5" text-anchor="middle" fill="var(--durable)">writes, once</text>
+
+<rect x="470" y="170" width="300" height="52" rx="6" fill="var(--signal-bg)" stroke="var(--signal)" stroke-width="2"/>
+<text x="620" y="191" font-size="12" font-weight="700" text-anchor="middle" fill="var(--signal)">THE AGENT · RUNS THE SIX STAGES</text>
+<text x="620" y="209" font-size="10.5" text-anchor="middle" fill="currentColor">holds the INVENTORY and the outline in context only</text>
+<g class="exp" data-k="handoffs" tabindex="0" role="button" aria-label="Open detail for the hand-offs"><rect x="746" y="176" width="12" height="12" rx="2"/><text x="752" y="185" text-anchor="middle">+</text></g>
+
+<rect x="940" y="170" width="280" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="1080" y="191" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">THE BROWSER · `open`</text>
+<text x="1080" y="209" font-size="10.5" text-anchor="middle" fill="currentColor">after DELIVER, again after the fix (S 290–296)</text>
+<line x1="770" y1="196" x2="940" y2="196" stroke="currentColor" stroke-width="1.8" marker-end="url(#d5)"/>
+<text x="855" y="184" font-size="10.5" text-anchor="middle" fill="currentColor">opens ×2</text>
+
+<rect x="470" y="310" width="300" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="620" y="331" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">THE RENDERER · MCP OR HEADLESS CHROME</text>
+<text x="620" y="349" font-size="10.5" text-anchor="middle" fill="currentColor">screenshots to /tmp, DOM dump to stdout (S 337, 359)</text>
+<line x1="600" y1="222" x2="600" y2="310" stroke="currentColor" stroke-width="1.8" marker-end="url(#d5)"/>
+<text x="585" y="270" font-size="10.5" text-anchor="end" fill="currentColor">file:// URL + probe</text>
+<line x1="640" y1="310" x2="640" y2="222" stroke="currentColor" stroke-width="1.8" marker-end="url(#d5)"/>
+<text x="655" y="270" font-size="10.5" fill="currentColor">PNGs · scrollWidth · console</text>
+</svg>
+<figcaption>The agent is amber here because it is the hop under discussion — every other party is what it hands off to. The one green edge is the write to disk: it is the only hand-off that outlives the run. Screenshots go to <code>/tmp</code> and are not part of the deliverable; the inventory and the outline live in the agent's context and are gone when the session ends, which is why the skill makes the agent print them (S 154, 181) — the printout is the only record. The user edge carries five round trips and is drawn once; section 1 draws each.</figcaption>
+</figure>
+
+<h2><span class="num">14</span>State — what is written, and whether it survives</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>State</th><th>Written by</th><th>Where</th><th>Survives the run?</th><th>Verdict</th></tr></thead>
+<tbody>
+<tr><td>the INVENTORY (seven rows per flow)</td><td>Stage 1, "built as you go" (S 120)</td><td>agent context; printed as one summary line</td><td>only the summary line</td><td><span class="verdict v-mid">partly</span> the rows themselves are never persisted, only the counts</td></tr>
+<tr><td>the outline</td><td>Stage 2 (S 181–188)</td><td>printed to the user</td><td>in chat history only</td><td><span class="verdict v-mid">partly</span></td></tr>
+<tr><td>the HTML document</td><td>Stage 3 writes, Stage 4 places</td><td>the accepted path</td><td>yes</td><td><span class="verdict v-ok">working</span> the deliverable</td></tr>
+<tr><td>screenshots</td><td>Stage 5</td><td><code>/tmp/wf-light.png</code> (S 337)</td><td>until /tmp is cleared</td><td><span class="verdict v-mid">partly</span> for this page they were moved into the repository's README media folder</td></tr>
+<tr><td>the DOM dump with the probe</td><td>Stage 5 (S 359)</td><td>stdout</td><td>no</td><td><span class="verdict v-ok">working</span> read once, discarded by design</td></tr>
+<tr><td>the drawer's content store <code>D</code></td><td>Stage 3 (V 325–337)</td><td>inside the HTML, keyed, not in the DOM</td><td>yes, with the file</td><td><span class="verdict v-ok">working</span></td></tr>
+<tr><td>expander open/closed, selected tab</td><td>the reader</td><td>DOM only</td><td>no — reload resets</td><td><span class="verdict v-ok">working</span> intentionally stateless (V 355–358)</td></tr>
+</tbody></table></div>
+
+<h2><span class="num">15</span>Branches — both sides of every conditional</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Where</th><th>Condition</th><th>Side A</th><th>Side B</th><th>Cited</th></tr></thead>
+<tbody>
+<tr><td>Gate A</td><td>file or chat?</td><td>file → Gate B</td><td>chat → exit the skill</td><td>S 57–60</td></tr>
+<tr><td>Gate B</td><td>repo or process?</td><td>repo → 1-SCAN</td><td>process → 1-INTERVIEW</td><td>S 78</td></tr>
+<tr><td>1-INTERVIEW</td><td>did the user name a doc?</td><td>yes → read it, ask only gaps</td><td>no → ask, one question at a time</td><td>S 110–112</td></tr>
+<tr><td>leaf test</td><td>one mechanism?</td><td>yes → cite and write the row</td><td>no → split, re-test</td><td>S 101–105</td></tr>
+<tr><td>inventory row</td><td>does the row apply?</td><td>yes → fill it</td><td>no → say so, no filler</td><td>S 133</td></tr>
+<tr><td>Stage 2</td><td>one layer or several?</td><td>one → a small flat page</td><td>several → tabs</td><td>S 169–170, V 243–245</td></tr>
+<tr><td>Stage 4</td><td>permanent or one-off?</td><td>subject's docs folder</td><td>scratch, out of the repo</td><td>S 279–280</td></tr>
+<tr><td>Stage 5 render</td><td>which renderer exists?</td><td>MCP · headless Chrome</td><td>neither → UNVERIFIED</td><td>S 326–346</td></tr>
+<tr><td>Stage 5 dark</td><td>which dark guard?</td><td><code>--force-dark-mode</code> (media query)</td><td><code>data-theme="dark"</code> (attribute)</td><td>S 338–339 — both must pass</td></tr>
+<tr><td>Stage 5 fix</td><td>clearly broken?</td><td>fix, one edit</td><td>leave it, one line to the user</td><td>S 380–386</td></tr>
+<tr><td>reference files</td><td>file present?</td><td>read it</td><td>say so, UNVERIFIED for what it governs</td><td>S 428–432</td></tr>
+</tbody></table></div>
+
+<h2><span class="num">16</span>Key identifiers — the literal values</h2>
+<div class="tablewrap"><table>
+<thead><tr><th>Thing</th><th>Value</th><th>Cited</th></tr></thead>
+<tbody>
+<tr><td>skill path</td><td><code>skills/workflow-artifact/SKILL.md</code> · <code>references/diagram-geometry.md</code> · <code>references/visual-spec.md</code> · <code>assets/tokens.css</code></td><td>S 420–426</td></tr>
+<tr><td>SVG canvas</td><td><code>viewBox="0 0 1240 {H}"</code>, height free</td><td>V 124, G 236</td></tr>
+<tr><td>the house dash</td><td><code>stroke-dasharray="5 3"</code></td><td>V 208</td></tr>
+<tr><td>strokes</td><td>1.8 neutral · 2.0 semantic · <code>rx="6"</code></td><td>V 156</td></tr>
+<tr><td>box sizes</td><td>200–300 wide, 44–52 tall; gaps 80–120 horizontal, 40–60 vertical</td><td>G 237–240</td></tr>
+<tr><td>font floor in SVG</td><td>8.5px</td><td>G 242, V 178</td></tr>
+<tr><td>text-width arithmetic</td><td>chars × size × 0.50 sans · × 0.55 mono · + 30px padding</td><td>G 202–205</td></tr>
+<tr><td>label half-width</td><td>chars × size × 0.30 at <code>text-anchor="middle"</code></td><td>G 191</td></tr>
+<tr><td>section numeral</td><td>42px / 800, 64px column, 84px indent; 32px / 46px / 60px under 700px</td><td>V 61–89</td></tr>
+<tr><td>prose measure</td><td>100ch, wrap 1600px</td><td>V 366–374</td></tr>
+<tr><td>headless render size</td><td>1440×2400 · layout floor ≈485px, so never trust a 390px capture</td><td>S 337, 348–352</td></tr>
+<tr><td>light accents</td><td><code>--durable #16A34A</code> · <code>--signal #B45309</code> · <code>--danger #DC2626</code></td><td>tokens.css 39–43</td></tr>
+<tr><td>dark accents</td><td><code>#4ADE80</code> · <code>#FBBF24</code> · <code>#F87171</code></td><td>tokens.css 70–75</td></tr>
+</tbody></table></div>
+</div>
+<div id="panel-c" role="tabpanel" aria-labelledby="tab-c" hidden>
+
+<h2><span class="num">17</span>Where a run breaks — and what stands between each break and the reader</h2>
+<figure>
+<svg viewBox="0 0 1240 740" role="img" aria-label="Seven ways a run of this skill breaks, drawn as failure, what catches it, and outcome: four are caught by a printed line, a failed read, a fallback or a screenshot; three have only a written rule between them and a broken document.">
+<!--
+  LAYOUT GRID (D6)
+  Columns:  failure 20..340 | detection 460..780 | outcome 900..1220   (gaps 120; labels centred at x=400 and x=840)
+  Rows:     52 tall, pitch 100 → y = 50 · 150 · 250 · 350 · 450 · 550 · 650
+  Routes:   every arrow horizontal at row centre (y+26); no verticals, no crossings possible.
+  Verify:   widest detail line 52 chars × 10.5 × 0.5 = 273px < 320 − 30.
+-->
+<defs>
+  <marker id="d6" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="currentColor"/></marker>
+  <marker id="d6r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--danger)"/></marker>
+  <marker id="d6g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--durable)"/></marker>
+</defs>
+<text x="20" y="22" font-family="var(--mono)" font-size="10" letter-spacing="1.2" fill="var(--muted)">SEVEN WAYS A RUN BREAKS — FOUR ARE CAUGHT, THREE HAVE ONLY A RULE BETWEEN THEM AND THE READER</text>
+
+<!-- row 1: gate A inferred -->
+<rect x="20" y="50" width="320" height="52" rx="6" fill="var(--danger-bg)" stroke="var(--danger)" stroke-width="2"/>
+<text x="180" y="71" font-size="12" font-weight="700" text-anchor="middle" fill="var(--danger)">GATE A SKIPPED · ANSWER INFERRED</text>
+<text x="180" y="89" font-size="10.5" text-anchor="middle" fill="currentColor">the wording said "workflow", so: a file (S 52–63)</text>
+<g class="exp" data-k="gatefail" tabindex="0" role="button" aria-label="Open detail for the skipped gate"><rect x="316" y="56" width="12" height="12" rx="2"/><text x="322" y="65" text-anchor="middle">+</text></g>
+<line x1="340" y1="76" x2="460" y2="76" stroke="var(--danger)" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#d6r)"/>
+<text x="400" y="64" font-size="10.5" text-anchor="middle" fill="var(--danger)">nothing catches it</text>
+<rect x="460" y="50" width="320" height="52" rx="6" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 3"/>
+<text x="620" y="71" font-size="12" font-weight="700" text-anchor="middle" fill="var(--muted)">NO MECHANICAL CHECK</text>
+<text x="620" y="89" font-size="10.5" text-anchor="middle" fill="currentColor">a prohibition only: "never guess" (S 63)</text>
+<line x1="780" y1="76" x2="900" y2="76" stroke="currentColor" stroke-width="1.8" marker-end="url(#d6)"/>
+<text x="840" y="64" font-size="10.5" text-anchor="middle" fill="currentColor">so</text>
+<rect x="900" y="50" width="320" height="52" rx="6" fill="var(--danger-bg)" stroke="var(--danger)" stroke-width="2"/>
+<text x="1060" y="71" font-size="12" font-weight="700" text-anchor="middle" fill="var(--danger)">✗ THE WRONG DELIVERABLE</text>
+<text x="1060" y="89" font-size="10.5" text-anchor="middle" fill="currentColor">a file nobody asked for, or a wall of text (S 12)</text>
+
+<!-- row 2: inventory row never written -->
+<rect x="20" y="150" width="320" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="180" y="171" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">AN INVENTORY ROW NEVER WRITTEN</text>
+<text x="180" y="189" font-size="10.5" text-anchor="middle" fill="currentColor">"silently vanishes from the document" (S 121)</text>
+<line x1="340" y1="176" x2="460" y2="176" stroke="currentColor" stroke-width="1.8" marker-end="url(#d6)"/>
+<text x="400" y="164" font-size="10.5" text-anchor="middle" fill="currentColor">caught by</text>
+<rect x="460" y="150" width="320" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="620" y="171" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">THE GATHER ✓ COUNT LINE</text>
+<text x="620" y="189" font-size="10.5" text-anchor="middle" fill="currentColor">printed before any HTML exists (S 154–158)</text>
+<line x1="780" y1="176" x2="900" y2="176" stroke="var(--durable)" stroke-width="1.8" marker-end="url(#d6g)"/>
+<text x="840" y="164" font-size="10.5" text-anchor="middle" fill="var(--durable)">then</text>
+<rect x="900" y="150" width="320" height="52" rx="6" fill="var(--durable-bg)" stroke="var(--durable)" stroke-width="2"/>
+<text x="1060" y="171" font-size="12" font-weight="700" text-anchor="middle" fill="var(--durable)">USER CORRECTS THE PREMISE</text>
+<text x="1060" y="189" font-size="10.5" text-anchor="middle" fill="currentColor">a wrong count is visible while it is cheap (S 155)</text>
+
+<!-- row 3: reference file missing -->
+<rect x="20" y="250" width="320" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="180" y="271" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">A REFERENCE FILE IS MISSING</text>
+<text x="180" y="289" font-size="10.5" text-anchor="middle" fill="currentColor">tokens, geometry or visual-spec (S 428)</text>
+<line x1="340" y1="276" x2="460" y2="276" stroke="currentColor" stroke-width="1.8" marker-end="url(#d6)"/>
+<text x="400" y="264" font-size="10.5" text-anchor="middle" fill="currentColor">caught by</text>
+<rect x="460" y="250" width="320" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="620" y="271" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">THE READ AT STAGE 2 OR 3 FAILS</text>
+<text x="620" y="289" font-size="10.5" text-anchor="middle" fill="currentColor">say so in one line, carry on (S 428–429)</text>
+<line x1="780" y1="276" x2="900" y2="276" stroke="var(--durable)" stroke-width="1.8" marker-end="url(#d6g)"/>
+<text x="840" y="264" font-size="10.5" text-anchor="middle" fill="var(--durable)">then</text>
+<rect x="900" y="250" width="320" height="52" rx="6" fill="var(--durable-bg)" stroke="var(--durable)" stroke-width="2"/>
+<text x="1060" y="271" font-size="12" font-weight="700" text-anchor="middle" fill="var(--durable)">UNVERIFIED FOR WHAT IT GOVERNS</text>
+<text x="1060" y="289" font-size="10.5" text-anchor="middle" fill="currentColor">never reconstructed from memory (S 430–432)</text>
+
+<!-- row 4: no renderer -->
+<rect x="20" y="350" width="320" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="180" y="371" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">NO RENDERER ON THE MACHINE</text>
+<text x="180" y="389" font-size="10.5" text-anchor="middle" fill="currentColor">no DevTools MCP, no Chrome binary (S 344)</text>
+<line x1="340" y1="376" x2="460" y2="376" stroke="currentColor" stroke-width="1.8" marker-end="url(#d6)"/>
+<text x="400" y="364" font-size="10.5" text-anchor="middle" fill="currentColor">caught by</text>
+<rect x="460" y="350" width="320" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="620" y="371" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">THE RANKED FALLBACK RUNS OUT</text>
+<text x="620" y="389" font-size="10.5" text-anchor="middle" fill="currentColor">MCP → headless → neither (S 324–344)</text>
+<line x1="780" y1="376" x2="900" y2="376" stroke="var(--durable)" stroke-width="1.8" marker-end="url(#d6g)"/>
+<text x="840" y="364" font-size="10.5" text-anchor="middle" fill="var(--durable)">then</text>
+<rect x="900" y="350" width="320" height="52" rx="6" fill="var(--durable-bg)" stroke="var(--durable)" stroke-width="2"/>
+<text x="1060" y="371" font-size="12" font-weight="700" text-anchor="middle" fill="var(--durable)">SAID VERBATIM, NOT SOFTENED</text>
+<text x="1060" y="389" font-size="10.5" text-anchor="middle" fill="currentColor">the exact sentence, and not called done (S 344–346)</text>
+
+<!-- row 5: silent JS throw — the console read is the decision point -->
+<rect x="20" y="450" width="320" height="52" rx="6" fill="var(--danger-bg)" stroke="var(--danger)" stroke-width="2"/>
+<text x="180" y="471" font-size="12" font-weight="700" text-anchor="middle" fill="var(--danger)">A SILENT JS THROW</text>
+<text x="180" y="489" font-size="10.5" text-anchor="middle" fill="currentColor">every expander dead, page looks right (S 330)</text>
+<line x1="340" y1="476" x2="460" y2="476" stroke="currentColor" stroke-width="1.8" marker-end="url(#d6)"/>
+<text x="400" y="464" font-size="10.5" text-anchor="middle" fill="currentColor">caught only by</text>
+<rect x="460" y="450" width="320" height="52" rx="6" fill="var(--signal-bg)" stroke="var(--signal)" stroke-width="2"/>
+<text x="620" y="471" font-size="12" font-weight="700" text-anchor="middle" fill="var(--signal)">READING THE CONSOLE</text>
+<text x="620" y="489" font-size="10.5" text-anchor="middle" fill="currentColor">the one check a screenshot cannot do (S 330, 371)</text>
+<g class="exp" data-k="console" tabindex="0" role="button" aria-label="Open detail for the console read"><rect x="756" y="456" width="12" height="12" rx="2"/><text x="762" y="465" text-anchor="middle">+</text></g>
+<line x1="780" y1="476" x2="900" y2="476" stroke="var(--danger)" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#d6r)"/>
+<text x="840" y="464" font-size="10.5" text-anchor="middle" fill="var(--danger)">if skipped</text>
+<rect x="900" y="450" width="320" height="52" rx="6" fill="var(--danger-bg)" stroke="var(--danger)" stroke-width="2"/>
+<text x="1060" y="471" font-size="12" font-weight="700" text-anchor="middle" fill="var(--danger)">✗ DEAD EXPANDERS SHIP</text>
+<text x="1060" y="489" font-size="10.5" text-anchor="middle" fill="currentColor">22 boxes on this page that would do nothing</text>
+
+<!-- row 6: two-digit numeral -->
+<rect x="20" y="550" width="320" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="180" y="571" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">A NUMERAL OVERRUNS ITS COLUMN</text>
+<text x="180" y="589" font-size="10.5" text-anchor="middle" fill="currentColor">the overrun renders invisible, not clipped (V 96–105)</text>
+<line x1="340" y1="576" x2="460" y2="576" stroke="currentColor" stroke-width="1.8" marker-end="url(#d6)"/>
+<text x="400" y="564" font-size="10.5" text-anchor="middle" fill="currentColor">caught by</text>
+<rect x="460" y="550" width="320" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="620" y="571" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">THE SCREENSHOT — AND ONLY THAT</text>
+<text x="620" y="589" font-size="10.5" text-anchor="middle" fill="currentColor">"it looks like a font problem" (V 104–105)</text>
+<line x1="780" y1="576" x2="900" y2="576" stroke="var(--durable)" stroke-width="1.8" marker-end="url(#d6g)"/>
+<text x="840" y="564" font-size="10.5" text-anchor="middle" fill="var(--durable)">prevented by</text>
+<rect x="900" y="550" width="320" height="52" rx="6" fill="var(--durable-bg)" stroke="var(--durable)" stroke-width="2"/>
+<text x="1060" y="571" font-size="12" font-weight="700" text-anchor="middle" fill="var(--durable)">THE 64PX COLUMN, ALWAYS</text>
+<text x="1060" y="589" font-size="10.5" text-anchor="middle" fill="currentColor">sections 10–19 on this page exercise it (V 107–113)</text>
+
+<!-- row 7: fix loop -->
+<rect x="20" y="650" width="320" height="52" rx="6" fill="none" stroke="currentColor" stroke-width="1.8"/>
+<text x="180" y="671" font-size="12" font-weight="700" text-anchor="middle" fill="currentColor">THE FIX PASS BECOMES A LOOP</text>
+<text x="180" y="689" font-size="10.5" text-anchor="middle" fill="currentColor">chasing a clean scorecard (S 378–382)</text>
+<g class="exp" data-k="loop" tabindex="0" role="button" aria-label="Open detail for the fix loop"><rect x="316" y="656" width="12" height="12" rx="2"/><text x="322" y="665" text-anchor="middle">+</text></g>
+<line x1="340" y1="676" x2="460" y2="676" stroke="var(--danger)" stroke-width="1.8" stroke-dasharray="5 3" marker-end="url(#d6r)"/>
+<text x="400" y="664" font-size="10.5" text-anchor="middle" fill="var(--danger)">nothing catches it</text>
+<rect x="460" y="650" width="320" height="52" rx="6" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="2 3"/>
+<text x="620" y="671" font-size="12" font-weight="700" text-anchor="middle" fill="var(--muted)">NO MECHANICAL CHECK</text>
+<text x="620" y="689" font-size="10.5" text-anchor="middle" fill="currentColor">a rule only: one pass, then stop (S 378)</text>
+<line x1="780" y1="676" x2="900" y2="676" stroke="currentColor" stroke-width="1.8" marker-end="url(#d6)"/>
+<text x="840" y="664" font-size="10.5" text-anchor="middle" fill="currentColor">so</text>
+<rect x="900" y="650" width="320" height="52" rx="6" fill="var(--danger-bg)" stroke="var(--danger)" stroke-width="2"/>
+<text x="1060" y="671" font-size="12" font-weight="700" text-anchor="middle" fill="var(--danger)">✗ POLISHING THE WRONG DRAFT</text>
+<text x="1060" y="689" font-size="10.5" text-anchor="middle" fill="currentColor">"a version they have not seen" (S 383–385)</text>
+</svg>
+<figcaption>Read the middle column. Four failures meet something mechanical: a count line the user sees, a file read that errors, a fallback that runs out, a screenshot. Three meet only a sentence in <code>SKILL.md</code> — the skipped gate, the fix loop, and the console read if the agent decides not to do it. Those three are where a run of this skill actually goes wrong, and the honest statement is that the skill knows it: each is written as a prohibition with a "why", not as a check. The console row is amber because it is the hinge — the one defect a rendered page hides completely, caught by a step that is easy to skip because the screenshots already look fine.</figcaption>
+</figure>
+
+<h2><span class="num">18</span>Unknowns and contradictions — listed, not resolved</h2>
+<p>The skill's own rule: "a named unknown beats a confident guess" and "contradictions between sources are surfaced, not silently resolved" (S 149–152). Applied to the skill itself:</p>
+<div class="tablewrap"><table>
+<thead><tr><th>ID</th><th>What is unknown, or contradicted</th><th>Where</th><th>Recommendation</th></tr></thead>
+<tbody>
+<tr><td><b>U-1</b></td><td>Stage 2 says "stop for the user" after the outline, but not what a rejected outline triggers — back to Stage 1, or re-plan in place?</td><td>S 181</td><td>state it: a rejected outline re-enters Stage 2; a wrong premise re-enters Stage 1</td></tr>
+<tr><td><b>U-2</b></td><td>Where the HTML first lands. Stage 3 writes a file; Stage 4 then proposes the path. Does BUILD write to scratch and DELIVER move it, or does BUILD wait for the path?</td><td>S 251, S 276</td><td>say BUILD writes to scratch; DELIVER moves it to the accepted path</td></tr>
+<tr><td><b>U-3</b></td><td>Gate B when the subject is both — a repo the user also describes as a process. "Ask once" is stated; which path wins is not.</td><td>S 84</td><td>SCAN wins when a repo exists; INTERVIEW fills only what the code cannot say</td></tr>
+<tr><td><b>U-4</b></td><td>What "every flow" means for a described process, where there is no entry-point list to enumerate.</td><td>S 92 vs S 110</td><td>define a process flow as one trigger to one terminal state; enumerate triggers</td></tr>
+<tr><td><b>U-5</b></td><td>The <code>open</code> binary missing, or no display attached — no fallback is stated for the mandatory open.</td><td>S 290</td><td>state the fallback: print the path and say it was not opened</td></tr>
+<tr><td><b>C-1</b></td><td>The doctype · charset · viewport rule sits under Stage 5, but it governs something BUILD does in Stage 3.</td><td>S 309–317 vs S 251–267</td><td>move the boilerplate rule into Stage 3 and leave a pointer in Stage 5</td></tr>
+<tr><td><b>C-2</b></td><td>The QA line says "rendered light + dark + mobile", while the same stage says a narrow capture lies and width must be measured, not captured.</td><td>S 389 vs S 348–352</td><td>reword the QA line to "light + dark + width probe"</td></tr>
+</tbody></table></div>
+<p class="callout">None of these stopped this page being built. They are listed because the skill says listing them is "usually the most valuable finding on the page" (S 152) — and because a reader of the skill will hit U-2 on their first run.</p>
+
+<h2><span class="num">19</span>Rejected alternatives — what the skill considered and why it lost</h2>
+<p>The skill lists "rejected alternatives" as a section shape and calls it "high value, almost always omitted" (S 203). Its own rejections, each cited:</p>
+<div class="tablewrap"><table>
+<thead><tr><th>Alternative</th><th>Rejected at</th><th>Why it lost</th><th>What replaced it</th></tr></thead>
+<tbody>
+<tr><td>Mermaid, D3, any diagram library</td><td>S 253</td><td>needs a runtime, a CDN, or both — the file stops rendering offline</td><td>hand-authored inline SVG with a layout-grid comment above each diagram</td></tr>
+<tr><td>a Google Fonts link</td><td>V 44–45</td><td>one network request breaks the offline rule "for a cosmetic gain"</td><td>a system fallback stack; Inter and JetBrains Mono only if installed</td></tr>
+<tr><td>a legend</td><td>S 412</td><td>meaning moves off the arrow into a key the reader has to consult</td><td>every arrow labelled; colour and dash carry the rest</td></tr>
+<tr><td>word floors, section counts, diagram-to-prose ratios</td><td>S 171–172</td><td>floors are met by padding, and padding reads as substance</td><td>resolution measured in steps, triggers and dependencies (S 39–44)</td></tr>
+<tr><td>tabs of equal length</td><td>S 178–179</td><td>two tabs get padded to match the one that carries the weight</td><td>depth where the subject is; short tabs allowed to be short</td></tr>
+<tr><td>a second review round</td><td>S 378–385</td><td>it polishes a draft the user has not seen yet</td><td>one surgical pass, one re-render, stop, and a "left for you" list</td></tr>
+<tr><td>generic node names — "Database", "Service", "API"</td><td>S 95, S 229–231</td><td>"true of any system, therefore useless"</td><td>real names: <code>Postgres · users</code>, <code>Developer ID Application (TEAM123456)</code></td></tr>
+<tr><td>a 390px screenshot as evidence of no sideways scroll</td><td>S 348–352</td><td>headless Chrome floors layout at about 485px, so the capture is cropped, not the page</td><td><code>scrollWidth</code> versus <code>clientWidth</code>, read back from a DOM dump</td></tr>
+<tr><td>growing a box to hold a paragraph</td><td>G 78, G 212–213</td><td>the box widens until the diagram is one box; the canvas scrolls</td><td>a <code>+</code> expander and one shared drawer that opens inside the section</td></tr>
+</tbody></table></div>
+</div>
+
+<div class="drawer" id="drawer" hidden>
+  <div class="dh"><span class="dt" id="d-title"></span><span class="dk" id="d-key"></span><button class="dc" id="d-close" type="button" aria-label="Close detail">CLOSE ×</button></div>
+  <div class="db" id="d-body"></div>
+</div>
+</div>
+
+<script>
+// Content store — keyed, not in the DOM (V §6). VERDICT_* tokens become chips at render time.
+var D = {
+  gatea: { t: "Gate A — file, or a workflow here in the chat?", k: "SKILL.md 50–63 · Stage 0", b: [
+    ["What it asks", "One question, before anything else: do you want this as a separate HTML file, or drawn here in the chat? (S 54)"],
+    ["Why it exists", "The word \"workflow\" over-triggers the skill (S 52). Rather than guess from phrasing, the skill spends one question. \"In the chat\" exits the skill entirely; the reply gets text boxes and arrows and nothing else (S 57)."],
+    ["Honest state", "VERDICT_OK On this page the answer arrived pre-written in the build brief (\"file\"). Nothing was inferred from wording, which is the rule's whole point (S 63)."]
+  ]},
+  gateb: { t: "Gate B — a repo, or a process you describe?", k: "SKILL.md 65–84 · Stage 0", b: [
+    ["What it decides", "Only how Stage 1 gathers. REPO → 1-SCAN, reading every entry point; PROCESS → 1-INTERVIEW, reading what you name and asking only the gaps (S 78). From Stage 2 onward the two paths are identical (S 81)."],
+    ["Ask once", "The question is asked one time per run and never again (S 84). Section 18, U-3 records the case the skill does not settle: a subject that is both."],
+    ["Honest state", "VERDICT_OK Answered \"process\" by the brief, with SKILL.md itself as the described process."]
+  ]},
+  gather: { t: "Stage 1 — GATHER, the seven-row inventory", k: "SKILL.md 88–158 · Stage 1", b: [
+    ["The rows", { cols: ["Row", "Capture", "On this page"], rows: [
+      ["STEPS", "every discrete step, to leaf (S 125)", "sections 1, 2, 4, 7"],
+      ["TRIGGERS", "cron · hook · user action · event · manual (S 126)", "section 11"],
+      ["DEPENDENCIES", "env · secret · service · binary · file · permission (S 127)", "section 12"],
+      ["BRANCHES", "every conditional, both sides, labelled (S 128)", "sections 2, 7, 15"],
+      ["FAILURE PATHS", "what happens when each step fails, and then what (S 129)", "sections 2, 7, 17"],
+      ["HANDOFFS", "control crossing process · machine · service · human (S 130)", "section 13"],
+      ["STATE", "written, read, persisted, where (S 131)", "section 14"]
+    ]}],
+    ["The rule that makes it work", "\"A row you never wrote down is a row that silently vanishes from the document\" (S 120–121). The rows are built as you go, not reconstructed at the end."]
+  ]},
+  plan: { t: "Stage 2 — PLAN, the outline the user approves", k: "SKILL.md 162–216 · Stage 2", b: [
+    ["What it produces", "A visible outline — tabs, spine, numbered sections with a shape each — and then the agent stops for the user (S 181–188). This is the last stop before any HTML exists."],
+    ["Shape rotation", "Eight section shapes are listed (S 195–204) and no shape may appear three times in a row (S 193). That rule is why this page alternates diagram, table, walk-through, list, quote."],
+    ["Honest state", "VERDICT_MID With nobody at the keyboard during the build, the stop became a printed outline and the build continued. The rule's intent — a reviewable plan before HTML — held; the pause did not."]
+  ]},
+  build: { t: "Stage 3 — BUILD, one self-contained file", k: "SKILL.md 247–269 · Stage 3", b: [
+    ["Hard constraints", "One HTML file. No CDN, no stylesheet link, no runtime library, no Mermaid, no D3 (S 251–253). It must render by double-clicking it with the network off."],
+    ["The look is not a choice", "Colours, fonts, box shapes, line styles and dash patterns are literal values in tokens.css and visual-spec.md (S 254–257). The agent pastes tokens.css verbatim and never looks anything up."],
+    ["Order of writing", "Sections in outline order — never all diagrams first with prose backfilled, which is how a page becomes a diagram gallery (S 265–267)."],
+    ["Honest state", "VERDICT_OK This file: zero external requests, tokens.css pasted as the :root block, sections appended in order."]
+  ]},
+  reads: { t: "The three files the look is hard-coded in", k: "SKILL.md 420–432 · reference files", b: [
+    ["Which, and when", "references/diagram-geometry.md — the Topology half at Stage 2, the Geometry half at Stage 3, always. references/visual-spec.md at Stage 3. assets/tokens.css at Stage 3, pasted verbatim (S 420–426)."],
+    ["If one is missing", "Say so in one line, carry on with what SKILL.md itself states, and report UNVERIFIED at Stage 6 for whatever that file governs. Never proceed as though it was read; never reconstruct its contents from memory — the values are literal and cannot be inferred (S 428–432)."],
+    ["Honest state", "VERDICT_OK All three were present for this build and read at the stages named."]
+  ]},
+  deliver: { t: "Stage 4 — DELIVER, propose the path, then open it", k: "SKILL.md 272–299 · Stage 4", b: [
+    ["Propose, never ask blindly", "Name a concrete destination for each reading — permanent next to the subject's own docs, one-off in scratch — and let the user accept in one word (S 276–281). Never write to a path the user has not seen."],
+    ["Derived from where you were reading", "A one-off left in a repo becomes stale documentation nobody deletes; a permanent doc left in temp gets swept (S 283–285)."],
+    ["Open it — mandatory", "open on macOS, xdg-open on Linux, start on Windows — before anything is reported, and again after the fix pass (S 287–296)."],
+    ["Honest state", "VERDICT_MID The path was pre-answered by the brief, so the user had seen it. The file was opened in a browser only after the build, by the reviewing agent, once a person was there to look at it."]
+  ]},
+  verify: { t: "Stage 5 — VERIFY & FIX, render it and look", k: "SKILL.md 302–391 · Stage 5", b: [
+    ["Render, in order of preference", "Browser DevTools MCP first; headless Chrome from the shell second; if neither exists, say exactly \"UNVERIFIED — the document was not rendered\" and do not call the work done (S 324–346)."],
+    ["Look for", "The seven defects markup review cannot catch (S 363–371), then the wiring checks: every data-k has a store entry and vice versa, every tab resolves to a panel with content, exactly one panel visible on load, arrow-key tabs, role=img and aria-label on every svg (S 373–376)."],
+    ["Fix — once", "Surgical edits, one per finding, never a redesign. Re-render once, re-open, stop (S 378–386)."],
+    ["Honest state", "VERDICT_OK This page: rendered headless light, dark under both guards, width probe at the 485px floor, console read, expanders and tabs exercised by injected clicks, one fix pass."]
+  ]},
+  present: { t: "Stage 6 — PRESENT, the four-line block", k: "SKILL.md 395–405 · Stage 6", b: [
+    ["Format", "WORKFLOW ARTIFACT: subject · OPEN: path, then GATHER counts, BUILD counts, QA result with what was fixed and what is left (S 397–402)."],
+    ["The one rule", "Say plainly if the render could not be verified. Never imply it was (S 404)."]
+  ]},
+  scan: { t: "1-SCAN — the codebase path", k: "SKILL.md 90–106 · Stage 1", b: [
+    ["Enumerate, do not sample", "Map the directory, read every entry point and orchestration file, trace every flow end to end — not one representative one (S 92–94)."],
+    ["Real names", "Class, module, file, method, service. \"Postgres · users\", never \"Database\" (S 95–96)."],
+    ["Then decompose", "Every step goes through the leaf test until it names one mechanism (S 98–106)."]
+  ]},
+  interview: { t: "1-INTERVIEW — the described-process path", k: "SKILL.md 108–116 · Stage 1", b: [
+    ["Read before asking", "If the user named a doc, repo, runbook or folder, read it first and extract everything it already answers. Then ask only the gaps, one question at a time, each with a recommended answer (S 110–112)."],
+    ["Gaps worth asking", "What triggers the process · the terminal states, success and failure · automated versus manual steps · what enforces each step · where it is known to break (S 114–116)."],
+    ["Honest state", "VERDICT_MID On this page the \"read first\" half ran against SKILL.md; the \"ask the gaps\" half had nobody to ask, so the gaps became section 18."]
+  ]},
+  leaf: { t: "The leaf test", k: "SKILL.md 98–106 · Stage 1", b: [
+    ["The test", "A step is a LEAF when it names ONE mechanism you could point at in a file: one function, one hook registration, one config key, one cron line, one API call, one file write (S 101–103)."],
+    ["The tell", "Still contains an \"and\" or a \"then\"? Not a leaf. Split it again (S 105)."],
+    ["Why it is the whole skill", "Depth is \"resolution, not volume\" (S 39). The leaf test is the only mechanism that turns that sentence into something checkable."]
+  ]},
+  gatherline: { t: "The GATHER ✓ line", k: "SKILL.md 154–158 · end of Stage 1", b: [
+    ["Format", "GATHER ✓ {N} sources · {M} steps (cited) · {K}/{K} flows · {T} triggers · {D} deps · {B} branches · {F} failure paths · {U} unknowns · {C} contradictions (S 158)."],
+    ["Why it is printed", "So the user can correct a wrong premise before any HTML exists (S 154–155). It is also the only record of the inventory that survives the session — see section 14."],
+    ["This page's line", "GATHER ✓ 3 sources · 44 steps (cited) · 7/7 flows · 6 triggers · 9 deps · 11 branches · 7 failure paths · 5 unknowns · 2 contradictions"]
+  ]},
+  floor: { t: "The floor — cover every flow, cite everything, guess nothing", k: "SKILL.md 135–152 · Stage 1", b: [
+    ["Why a floor and not a target", "Output floors can be met by padding. These cannot — they demand things you have to go and find (S 137–138)."],
+    ["The six", "Every flow traced, not one · both sides of every branch · every failure path investigated · a + expander on every full node · cite it, never assert from a name · unknowns listed, contradictions surfaced (S 140–152)."],
+    ["Honest state", "VERDICT_OK Every node on this page carries an S, G or V line reference. Section 18 holds the unknowns and contradictions."]
+  ]},
+  open: { t: "Open in the browser — mandatory, not optional", k: "SKILL.md 287–296 · Stage 4", b: [
+    ["The rule", "These documents are read in a browser, not in a terminal. A document the user has to go and find is a document they will not read (S 292–294). Open before reporting; open again after the fix pass so what is on screen is the repaired version (S 294–296)."],
+    ["Honest state", "VERDICT_MID Opened after the build by the reviewing agent, once someone was at the screen. Section 18, U-5 notes the skill has no fallback for a machine with no display."]
+  ]},
+  renderer: { t: "Which renderer? — the ranked fallback", k: "SKILL.md 322–346 · Stage 5", b: [
+    ["The rungs", { cols: ["Rung", "Tool", "Captures", "If absent"], rows: [
+      ["1st", "Browser DevTools MCP", "full page light and dark · each tab's first viewport · one expander open · a ~390px viewport · the console (S 326–330)", "fall to the shell"],
+      ["2nd", "headless Chrome from the shell", "--screenshot at 1440 wide, --force-dark-mode, and data-theme=dark separately; width via --dump-dom (S 335–341)", "fall to rung 3"],
+      ["3rd", "neither", "nothing", "say exactly: UNVERIFIED — the document was not rendered (S 344–346)"]
+    ]}],
+    ["This page", "VERDICT_OK Rung 2. Every capture the MCP rung lists was reproduced by injecting clicks into a scratch copy."]
+  ]},
+  look: { t: "LOOK — the defect table, then the wiring checks", k: "SKILL.md 361–376 · Stage 5", b: [
+    ["Seven defects only a render catches", "Text past a box edge · two labels touching · a line stopping short · something invisible in dark mode · an empty panel or drawer · sideways scroll · console errors (S 365–371)."],
+    ["Wiring", "Every .exp data-k has a store entry and vice versa; every tab's aria-controls resolves to a panel with content; exactly one panel visible on load; arrow-key navigation; role=img and an aria-label on every svg stating the diagram's claim (S 373–376)."],
+    ["This page", "VERDICT_OK 22 expanders, 22 store entries, no orphans either way; 3 tabs, 3 panels, 1 visible on load."]
+  ]},
+  fix: { t: "One surgical fix pass", k: "SKILL.md 378–391 · Stage 5", b: [
+    ["What a pass is", "Fix what is clearly broken. One edit per finding, never a redesign. Re-render once to confirm, re-open the file, stop (S 380–382)."],
+    ["What it is not", "Not a loop. Not a chase for a clean scorecard. The user's review is the real review; a second round polishes a version they have not seen (S 382–385)."],
+    ["Left for you", "Anything still open goes to the user in one line each, with the document (S 386)."]
+  ]},
+  handoffs: { t: "Hand-offs — who takes control, and what comes back", k: "SKILL.md 154, 181, 276–296, 324–359", b: [
+    ["The four parties", { cols: ["Party", "Agent gives", "Party returns", "Persists?"], rows: [
+      ["the user", "two questions, a count line, an outline, a path", "one-word answers, corrections", "chat history only"],
+      ["the disk", "one .html at the accepted path", "nothing", "VERDICT_OK yes — the deliverable"],
+      ["the browser", "open, twice", "nothing", "no"],
+      ["the renderer", "a file:// URL and a probe", "PNGs, scrollWidth, console text", "VERDICT_MID /tmp until cleared"]
+    ]}],
+    ["Why it matters", "Only the disk hand-off outlives the run. That is why the skill makes the agent print the inventory line and the outline — the printout is the only record."]
+  ]},
+  gatefail: { t: "The skipped gate — how the wrong deliverable happens", k: "SKILL.md 50–63, 12", b: [
+    ["The failure", "The request said \"workflow\", the agent inferred \"file\" and built one. Or inferred \"chat\" and drew a wall of text. Either way the reader gets what nobody asked for."],
+    ["What the skill has", "A prohibition: \"Never skip this and never guess from the wording of the request\" (S 63). No check can detect that the question was not asked — only the transcript shows it."],
+    ["Honest state", "VERDICT_BAD Nothing mechanical stands between this failure and the reader. The skill relies on the agent obeying a sentence."]
+  ]},
+  console: { t: "Reading the console — the check a screenshot cannot do", k: "SKILL.md 330, 371 · Stage 5", b: [
+    ["Why it is separate", "A silent JS throw kills every expander while the page still looks right (S 330). The screenshots pass. Only the console shows it."],
+    ["Headless", "Chrome's --enable-logging=stderr prints page console messages; a window.onerror probe injected into the DOM dump catches throws the log misses."],
+    ["Honest state", "VERDICT_OK Read on this page after every render. Zero page errors. The 22 expanders were also exercised by an injected click, which is the stronger proof."]
+  ]},
+  loop: { t: "The fix loop — why one pass is the rule", k: "SKILL.md 378–386 · Stage 5", b: [
+    ["The failure", "After the first fix pass, the agent re-runs the whole review, finds more, fixes more, and repeats until the scorecard is clean. Every round is spent on a draft the user has not seen."],
+    ["What the skill has", "A rule with its reason: one pass, then stop, because \"the user's review is the real review\" (S 383). No mechanism enforces it."],
+    ["Honest state", "VERDICT_BAD Nothing mechanical. On this page the pass was held to one by the agent counting; the skill could add a check — a second QA line is a defect."]
+  ]}
+};
+
+(function(){
+  var drawer = document.getElementById('drawer');
+  var dTitle = document.getElementById('d-title'), dKey = document.getElementById('d-key'), dBody = document.getElementById('d-body');
+  var cur = null;
+  var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+  function chips(s){
+    return esc(s)
+      .replace(/VERDICT_OK/g,  '<span class="verdict v-ok">working</span>')
+      .replace(/VERDICT_MID/g, '<span class="verdict v-mid">partly</span>')
+      .replace(/VERDICT_BAD/g, '<span class="verdict v-bad">not working</span>');
+  }
+  function bodyHtml(b){
+    if (typeof b === 'string') return '<p>' + chips(b) + '</p>';
+    if (b && b.cols) {
+      var h = '<div class="tablewrap"><table><thead><tr>';
+      b.cols.forEach(function(c){ h += '<th>' + esc(c) + '</th>'; });
+      h += '</tr></thead><tbody>';
+      b.rows.forEach(function(r){ h += '<tr>'; r.forEach(function(c){ h += '<td>' + chips(c) + '</td>'; }); h += '</tr>'; });
+      return h + '</tbody></table></div>';
+    }
+    return '';
+  }
+  // move the drawer to the end of the clicked expander's section (V §6)
+  function placeDrawer(fromEl){
+    var node = fromEl.closest ? fromEl.closest('figure') : null;
+    if(!node){ node = fromEl; while(node && node.tagName!=='FIGURE') node = node.parentNode; }
+    if(!node || !node.parentNode) return;
+    while(node.nextElementSibling && node.nextElementSibling.tagName !== 'H2'
+          && node.nextElementSibling !== drawer){
+      node = node.nextElementSibling;
+    }
+    node.parentNode.insertBefore(drawer, node.nextSibling);
+  }
+  function render(k){
+    var d = D[k];
+    dTitle.textContent = d.t; dKey.textContent = d.k;
+    dBody.innerHTML = d.b.map(function(p){ return '<div><h4>' + esc(p[0]) + '</h4>' + bodyHtml(p[1]) + '</div>'; }).join('');
+  }
+  function closeDrawer(){
+    drawer.hidden = true;
+    if (cur) { cur.classList.remove('on'); cur = null; }
+  }
+  function toggle(el){
+    var k = el.getAttribute('data-k');
+    if (!D[k]) return;
+    if (cur === el) { closeDrawer(); return; }
+    if (cur) cur.classList.remove('on');
+    cur = el; el.classList.add('on');
+    placeDrawer(el); render(k);
+    drawer.hidden = false;
+    drawer.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll('.exp'), function(el){
+    el.addEventListener('click', function(){ toggle(el); });
+    el.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(el); } });
+  });
+  document.getElementById('d-close').addEventListener('click', closeDrawer);
+
+  // tabs: click, arrow keys, Home/End (S 375)
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  function select(t){
+    tabs.forEach(function(x){
+      var on = x === t;
+      x.setAttribute('aria-selected', on ? 'true' : 'false');
+      x.tabIndex = on ? 0 : -1;
+      var p = document.getElementById(x.getAttribute('aria-controls'));
+      if (p) p.hidden = !on;
+    });
+    closeDrawer();
+  }
+  tabs.forEach(function(t, i){
+    t.addEventListener('click', function(){ select(t); });
+    t.addEventListener('keydown', function(e){
+      var j = null;
+      if (e.key === 'ArrowRight') j = (i + 1) % tabs.length;
+      if (e.key === 'ArrowLeft')  j = (i - 1 + tabs.length) % tabs.length;
+      if (e.key === 'Home') j = 0;
+      if (e.key === 'End')  j = tabs.length - 1;
+      if (j !== null) { e.preventDefault(); select(tabs[j]); tabs[j].focus(); }
+    });
+  });
+})();
+</script>

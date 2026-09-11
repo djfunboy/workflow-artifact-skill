@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1240 300" width="1240" height="300" role="img" aria-label="workflow-artifact: an agent skill with six stages — gather, plan, build, deliver, verify and fix, present — producing a diagrams-first HTML document">
+  <!--
+    LAYOUT GRID
+    Title block:  y=40..135
+    Spine row:    y=170..218  (arrow y=194)
+    Footnote:     y=262
+    Columns:      six boxes 130 wide, gap 70 → x = 40 · 240 · 440 · 640 · 840 · 1040 (ends 1170)
+  -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#22C55E"/><stop offset="1" stop-color="#4ADE80"/>
+    </linearGradient>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#4ADE80"/>
+    </marker>
+  </defs>
+  <rect width="1240" height="300" rx="12" fill="#0A1020"/>
+
+  <text x="40" y="78" font-family="Inter, -apple-system, system-ui, sans-serif" font-size="40" font-weight="800" letter-spacing="-0.02em" fill="url(#g)">workflow-artifact</text>
+  <text x="40" y="104" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" font-size="11" font-weight="700" letter-spacing="0.12em" fill="#94A3B8">DIAGRAMS ARE THE DELIVERABLE · PROSE IS THE CAPTION</text>
+  <text x="40" y="132" font-family="Inter, -apple-system, system-ui, sans-serif" font-size="14" fill="#CBD5E1">An agent skill that turns “explain how X works” into a diagrams-first HTML document instead of a wall of text.</text>
+
+  <g font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" font-size="11" font-weight="700" letter-spacing="0.08em" fill="#E2E8F0" text-anchor="middle">
+    <rect x="40"   y="170" width="130" height="48" rx="6" fill="#111A2E" stroke="#94A3B8" stroke-width="1.2"/>
+    <text x="105"  y="190">GATHER</text>
+    <rect x="240"  y="170" width="130" height="48" rx="6" fill="#111A2E" stroke="#94A3B8" stroke-width="1.2"/>
+    <text x="305"  y="190">PLAN</text>
+    <rect x="440"  y="170" width="130" height="48" rx="6" fill="#111A2E" stroke="#94A3B8" stroke-width="1.2"/>
+    <text x="505"  y="190">BUILD</text>
+    <rect x="640"  y="170" width="130" height="48" rx="6" fill="#111A2E" stroke="#94A3B8" stroke-width="1.2"/>
+    <text x="705"  y="190">DELIVER</text>
+    <rect x="840"  y="170" width="130" height="48" rx="6" fill="#111A2E" stroke="#94A3B8" stroke-width="1.2"/>
+    <text x="905"  y="190">VERIFY &amp; FIX</text>
+    <rect x="1040" y="170" width="130" height="48" rx="6" fill="#111A2E" stroke="#4ADE80" stroke-width="1.6"/>
+    <text x="1105" y="190" fill="#4ADE80">PRESENT</text>
+  </g>
+  <g font-family="Inter, -apple-system, system-ui, sans-serif" font-size="9.5" fill="#94A3B8" text-anchor="middle">
+    <text x="105"  y="207">every flow, cited</text>
+    <text x="305"  y="207">outline, you OK it</text>
+    <text x="505"  y="207">one HTML, inline SVG</text>
+    <text x="705"  y="207">path, then opens it</text>
+    <text x="905"  y="207">light · dark · phone</text>
+    <text x="1105" y="207">counts + what's left</text>
+  </g>
+
+  <g stroke="#4ADE80" stroke-width="1.4" fill="none" marker-end="url(#ah)">
+    <path d="M170,194 H240"/>
+    <path d="M370,194 H440"/>
+    <path d="M570,194 H570 H640"/>
+    <path d="M770,194 H840"/>
+    <path d="M970,194 H1040"/>
+  </g>
+  <g font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" font-size="9" letter-spacing="0.06em" fill="#94A3B8" text-anchor="middle">
+    <text x="205" y="182">inventory</text>
+    <text x="405" y="182">outline</text>
+    <text x="605" y="182">html file</text>
+    <text x="805" y="182">opened</text>
+    <text x="1005" y="182">one pass</text>
+  </g>
+
+  <text x="40" y="262" font-family="'JetBrains Mono', ui-monospace, Menlo, monospace" font-size="10" letter-spacing="0.08em" fill="#94A3B8">GATE A  FILE OR CHAT?   ·   GATE B  REPO OR PROCESS?   ·   ONE SELF-CONTAINED FILE   ·   NO CDN, NO LIBRARY   ·   RENDERS OFFLINE</text>
+</svg>
