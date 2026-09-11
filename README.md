@@ -5,7 +5,7 @@
 An agent skill that turns "explain how X works" into a diagrams-first HTML
 document instead of a wall of text.
 
-**[Live preview →](https://djfunboy.github.io/workflow-artifact/examples/workflow-artifact-pipeline.html)**
+**[Live preview →](https://djfunboy.github.io/workflow-artifact-skill/examples/workflow-artifact-pipeline.html)**
 a document the skill produced about itself. Click a tab, click a `+`.
 
 Give it a codebase or describe a process. It enumerates every flow, trigger,
