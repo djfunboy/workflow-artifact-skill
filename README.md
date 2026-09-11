@@ -110,10 +110,11 @@ one file, no dependencies. Open it from disk with the network off.
 
 ## Pro tip
 
-The same idiom works for the agent's chat replies. Give it this:
+Consider adding this as a hook, so the agent's chat replies follow the same
+idiom as the documents:
 
 ```
-Answer in workflows, relationship maps, decision trees, and tables — never a wall of text. Solid arrows for flow, dotted for reference, ✗ where a flow is broken. Callout boxes beside the flow, not in it. Tables carry rationale and recommendation, not just facts.
+[format] Answer in workflows, relationship maps, decision trees, and tables — never a wall of text. Solid arrows for flow, dotted for reference, ✗ where a flow is broken. Callout boxes beside the flow, not in it. Tables carry rationale and recommendation, not just facts.
 Box every node. Boxes stay small, the diagram runs as wide and as long as it needs. Parallel things side by side, branches as side-by-side boxes, every arrow labelled.
 ```
 
